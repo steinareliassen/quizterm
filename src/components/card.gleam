@@ -1,5 +1,6 @@
 import gleam/dynamic/decode
 import gleam/erlang/process.{type Subject}
+import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/otp/actor.{type Started}
@@ -70,61 +71,39 @@ pub opaque type Msg {
 }
 
 fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
-  let registry = model.registry
   let handler = model.handler
-  let lobby = model.lobby
 
   case msg {
-    ReceiveName(name) -> {
-      #(Model(NameOk(name), lobby, registry, handler), effect.none())
+    ReceiveName(name) -> #(Model(..model, state: NameOk(name)), effect.none())
+    AcceptName(Some(name)) -> {
+      actor.send(handler.data, message.GiveName(name:))
+      #(Model(..model, state: WaitForQuiz(name)), effect.none())
     }
-    AcceptName(name) -> {
-      case name {
-        Some(name) -> {
-          actor.send(handler.data, message.GiveName(name:))
-          #(Model(WaitForQuiz(name), lobby, registry, handler), effect.none())
-        }
-        _ -> #(Model(AskName, lobby, registry, handler), effect.none())
-      }
-    }
+    AcceptName(None) -> #(Model(..model, state: AskName), effect.none())
     GiveAnswer(name, answer) -> {
-      actor.send(handler.data, message.GiveAnswer(name, answer))
-      #(Model(WaitForQuiz(name), lobby, registry, handler), effect.none())
+      actor.send(handler.data, message.GiveAnswer(name, Some(answer)))
+      #(Model(..model, state: WaitForQuiz(name)), effect.none())
     }
-
-    SharedMessage(message:) -> {
-      let state = case model.state {
-        WaitForQuiz(name) ->
-          case message {
-            message.Answer -> Answer(name)
-            _ -> model.state
-          }
-        _ -> model.state
-      }
-
-      case message {
-        message.Lobby(lobby) -> #(
-          Model(state, lobby, registry, handler),
+    SharedMessage(message.Lobby(lobby)) -> #(
+      Model(..model, lobby: lobby),
+      effect.none(),
+    )
+    SharedMessage(message.Answer) ->
+      case model.state {
+        WaitForQuiz(name) -> #(
+          Model(..model, state: Answer(name)),
           effect.none(),
         )
-        message.Answer ->
-          case model.state {
-            WaitForQuiz(name) -> #(
-              Model(Answer(name), lobby, registry, handler),
-              effect.none(),
-            )
-            _ -> #(Model(state, lobby, registry, handler), effect.none())
-          }
-        message.Await ->
-          case model.state {
-            Answer(name) -> #(
-              Model(WaitForQuiz(name), lobby, registry, handler),
-              effect.none(),
-            )
-            _ -> #(Model(state, lobby, registry, handler), effect.none())
-          }
+        _ -> #(model, effect.none())
       }
-    }
+    SharedMessage(message.Await) ->
+      case model.state {
+        Answer(name) -> #(
+          Model(..model, state: WaitForQuiz(name)),
+          effect.none(),
+        )
+        _ -> #(model, effect.none())
+      }
   }
 }
 
@@ -135,50 +114,123 @@ fn view(model: Model) -> Element(Msg) {
       case model.state {
         AskName -> #(
           "name",
-          view_input("Enter your name to join the quiz: ", ReceiveName),
+          html.div([], [
+            html.h3([], [
+              html.text(
+                "Hello stranger. To join the quiz, I need to know your name",
+              ),
+            ]),
+            view_input("Name $> ", ReceiveName),
+          ]),
         )
-        NameOk(name) -> {
-          #(
-            "accept",
-            view_accept(
-              "Are you ok with the name " <> name <> "? (y/n)",
-              name,
-              AcceptName,
-            ),
-          )
-        }
-        Answer(name) -> {
-          #(
-            "answer",
-            view_named_input("Answer the question: ", name, GiveAnswer),
-          )
-        }
-        _ -> {
-          #("history", view_ask_question("Waiting for next question"))
-        }
+        NameOk(name) -> #(
+          "accept",
+          html.div([], [
+            html.h3([], [
+              html.text(
+                "Your name is " <> name <> "? Are you absolutely sure???",
+              ),
+            ]),
+            view_accept("Press <Y>es or <N>o $>", name, AcceptName),
+          ]),
+        )
+        Answer(name) -> #(
+          "answer",
+          html.div([], [
+            html.h3([], [
+              html.text(
+                "The Quiz Lead will now ask the question, and you may answer.",
+              ),
+            ]),
+            view_named_input("Answer $>", name, GiveAnswer),
+          ]),
+        )
+        _ -> #("await", html.h3([], [html.text("Waiting for next question")]))
       },
     ]),
+    html.div([attribute.class("under")], case model.lobby {
+      [] -> []
+      lobby -> {
+        let answered =
+          list.filter(lobby, fn(x) {
+            case x.answer {
+              message.HasAnswered | message.GivenAnswer(_) -> True
+              _ -> False
+            }
+          })
+          |> list.length
+          |> int.to_string
+        let size = lobby |> list.length |> int.to_string
+        [
+          html.div([attribute.class("under_cell_nb")], []),
+          html.div([attribute.class("under_cell")], [
+            html.h3([], [
+              html.text("Answered:"),
+            ]),
+            case answered == size {
+              True -> html.text("Everyone!")
+              False -> html.text(answered <> "/" <> size)
+            },
+          ]),
+          html.div([attribute.class("under_cell_nb")], []),
+        ]
+      }
+    }),
     html.div(
       [attribute.class("under")],
-      list.map(model.lobby, fn(user) {
-        let User(name, answer) = user
-        let answer = case answer {
-          None -> "waiting..."
-          Some(answer) -> answer
+      list.filter(model.lobby, fn(x) {
+        case x.answer {
+          message.GivenAnswer(_) | message.HasAnswered -> True
+          _ -> False
         }
-        html.div([attribute.class("under_cell")], [
-          html.h3([], [
-            html.text(name),
-          ]),
-          html.text(answer),
-        ])
-      }),
+      })
+        |> list.map(fn(user) {
+          let User(name, answer) = user
+          case answer {
+            message.GivenAnswer(answer) -> answer
+            message.HasAnswered -> "Answer Given"
+            _ -> "Odd State..."
+          }
+          |> content_cell(name, _)
+        }),
+    ),
+    html.div(
+      [attribute.class("under")],
+      list.filter(model.lobby, fn(x) {
+        case x.answer {
+          message.IDontKnow -> True
+          _ -> False
+        }
+      })
+        |> list.map(fn(user) {
+          let User(name, _) = user
+          content_cell(name, "P.A.S.S :(")
+        }),
+    ),
+    html.div(
+      [attribute.class("under")],
+      list.filter(model.lobby, fn(x) {
+        case x.answer {
+          message.NotAnswered -> True
+          _ -> False
+        }
+      })
+        |> list.map(fn(user) {
+          case user {
+            User(name, _) -> content_cell(name, "Not Answered")
+          }
+        }),
     ),
   ])
 }
 
-fn view_ask_question(question: String) -> Element(msg) {
-  html.text(question)
+fn content_cell(header: String, content: String) {
+  html.div([attribute.class("under_cell")], [
+    html.h3([], [
+      html.text(header),
+    ]),
+    html.text(content),
+  ])
 }
 
 fn view_accept(

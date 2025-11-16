@@ -4,7 +4,14 @@ pub type NotifyServer {
   AnswerQuiz
   RevealAnswer
   GiveName(name: String)
-  GiveAnswer(name: String, answer: String)
+  GiveAnswer(name: String, answer: Option(String))
+}
+
+pub type AnswerStatus {
+  NotAnswered
+  HasAnswered
+  IDontKnow
+  GivenAnswer(answer: String)
 }
 
 pub type NotifyClient {
@@ -14,5 +21,5 @@ pub type NotifyClient {
 }
 
 pub type User {
-  User(name: String, answer: Option(String))
+  User(name: String, answer: AnswerStatus)
 }

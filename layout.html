@@ -1,0 +1,74 @@
+<!doctype html>
+<html>
+    <head>
+        <style>
+            body {
+                background-color: #000000;
+                color: #73ad21;
+            }
+            .center {
+                margin: auto;
+                width: 50%;
+                border: 3px solid #73ad21;
+                padding: 10px;
+            }
+            .under {
+                margin: auto;
+               	cursor: default;
+               	margin-bottom: 8px;
+                display: grid;
+                width: 50%;
+                grid-template-columns: 33% 33% 33%;
+            }
+
+            .under div {
+                border: 3px solid #73ad21;
+                margin: 5px;
+                width: 95%;
+            }
+            #fname {
+                background-color: #000000;
+                color: #00FF00;
+                width: 20cap;
+            }
+            #fname:focus {
+                background-color: #000000;
+                width: 20cap;
+                border-color: #00FF00;
+                outline: none;
+            }
+
+            </style>
+    </head>
+    <body onload="setFocusToTextBox()" onfocus="setFocusToTextBox()">
+        <div class="center">
+            <h1>QUIZTerminal</h1>
+            <p>What is your name? <span id="demo"></span><input  onblur="setFocusToTextBox()" type="text" id="fname""></p>
+            <p></p>
+        </div>
+        <div class="under">
+            <div class="card">
+                TESTsfdfdsk jhfkj dshfkjs skjfdshjs TESTsfdfdsk jhfkj
+                dshfkjs skjfdshjsTESTsfdfdsk jhfkj dshfkjs skjfdshjs
+            </div>
+            <div class="card">TEST</div>
+            <div class="card">TEST</div>
+            <div class="card">
+                TESTsfdfdsk jhfkj dshfkjs skjfdshjs TESTsfdfdsk jhfkj
+                dshfkjs skjfdshjsTESTsfdfdsk jhfkj dshfkjs skjfdshjs
+            </div>
+            <div class="card">TEST</div>
+            <div class="card">
+                TESTsfdfdsk jhfkj dshfkjs skjfdshjs TESTsfdfdsk jhfkj
+                dshfkjs skjfdshjsTESTsfdfdsk jhfkj dshfkjs skjfdshjs
+            </div>
+            <div class="card">TEST</div>
+            <div class="card">TEST</div>
+        </div>
+        <script>
+        function setFocusToTextBox() {
+          document.getElementById("fname").focus()
+        }
+        </script>
+    </body>
+</html>

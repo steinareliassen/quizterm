@@ -1,6 +1,6 @@
 import backend/sockethandler
 import backend/statehandler
-import components/cards
+import components/card
 import components/control
 import gleam/bytes_tree
 import gleam/erlang/application
@@ -31,7 +31,7 @@ pub fn main() {
         ["lustre", "runtime.mjs"] -> serve_runtime()
         ["static", file] -> serve_static(file)
         ["ws"] ->
-          sockethandler.serve(request, cards.component(), #(registry, actor))
+          sockethandler.serve(request, card.component(), #(registry, actor))
         ["cws"] ->
           sockethandler.serve(request, control.component(), #(registry, actor))
         _ -> response.set_body(response.new(404), mist.Bytes(bytes_tree.new()))

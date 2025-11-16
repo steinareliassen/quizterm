@@ -1,15 +1,16 @@
 import gleam/erlang/process
 import gleam/list
-import gleam/option.{type Option, None, Some}
+import gleam/option.{None, Some}
 import gleam/otp/actor
 import group_registry.{type GroupRegistry}
 import shared/message.{
-  type NotifyClient, Answer, AnswerQuiz, Await, GiveAnswer, GiveName, Lobby,
+  type AnswerStatus, type NotifyClient, Answer, AnswerQuiz, Await, GiveAnswer,
+  GiveName, GivenAnswer, HasAnswered, IDontKnow, Lobby, NotAnswered,
   RevealAnswer, User,
 }
 
 type State {
-  State(name_answers: List(#(String, Option(String))), hide_answers: Bool)
+  State(name_answers: List(#(String, AnswerStatus)), hide_answers: Bool)
 }
 
 pub fn initialize(registry: GroupRegistry(NotifyClient)) {
@@ -17,17 +18,25 @@ pub fn initialize(registry: GroupRegistry(NotifyClient)) {
   |> actor.on_message(fn(state: State, message) {
     case message {
       GiveName(name) -> {
-        // Let the new client know the current question state
+        // Let the new client (and everyone else) know the current question state
         case state.hide_answers {
           True -> broadcast(registry, Answer)
           False -> broadcast(registry, Await)
         }
-        State(list.key_set(state.name_answers, name, None), state.hide_answers)
+        // Add the new user to lobby, and broadcast lobby
+        State(
+          list.key_set(state.name_answers, name, NotAnswered),
+          state.hide_answers,
+        )
         |> broadcast_lobby(registry)
       }
       GiveAnswer(name, answer) -> {
         State(
-          list.key_set(state.name_answers, name, Some(answer)),
+          list.key_set(state.name_answers, name, case answer {
+            Some("?") -> IDontKnow
+            Some(answer) -> GivenAnswer(answer)
+            None -> IDontKnow
+          }),
           state.hide_answers,
         )
         |> broadcast_lobby(registry)
@@ -37,9 +46,9 @@ pub fn initialize(registry: GroupRegistry(NotifyClient)) {
         State(
           list.map(state.name_answers, fn(user) {
             let #(name, _) = user
-            #(name, None)
+            #(name, NotAnswered)
           }),
-          True,
+          hide_answers: True,
         )
         |> broadcast_lobby(registry)
       }
@@ -60,17 +69,10 @@ fn broadcast_lobby(state: State, registry: GroupRegistry(NotifyClient)) {
     Lobby(
       list.map(state.name_answers, fn(name_answer) {
         let #(name, answer) = name_answer
-        User(name, case answer {
-          Some(answer) ->
-            Some(case state.hide_answers {
-              True -> "Answer"
-              False -> answer
-            })
-          None ->
-            case state.hide_answers {
-              True -> None
-              False -> Some("No answer")
-            }
+        User(name, case answer, state.hide_answers {
+          GivenAnswer(_), True -> HasAnswered
+          GivenAnswer(answer), False -> GivenAnswer(answer)
+          other, _ -> other
         })
       }),
     ),

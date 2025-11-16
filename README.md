@@ -1,40 +1,24 @@
-## QuizTerm
+### Welcome to QUIZTerm
 
-Simple multi-client app for answering quiz questions together, rather unfinished & unpolished version,
-but it works...
+QUIZTerm is a simple online "quiz answering" game. It provides a way for contestants to provide answers to questions,
+and reveal the answers for everyone at the same time.
 
-#### Testing the code by compile / run
+Cards showing who are playing, their answer status (have they answered or not?), and when revealed, what their answer
+was, will show up on everyones screen.
 
-It isn't always easy to find a pre-built Erlang for every system at a version that is required for new
-versions of gleam, but you can easily snatch them for linux from a docker image (see Dockerfile),
-alternatively you can use distrobox / toolbox to create an env using the docker image, and have everything
-set up "out of the box".
+Not quite finished yet, it is at a point where it is "usable" enough.
 
-To setup a distrobox container for development, use:
+There are two endpoints to use:
+| / |endpoint for "regular" players.
+| /control | endpoint for person controlling the quiz. Same interface as for regular players, but with possiblity to control when to reveal answers and when to move on to next question. This gives the possiblity for the person asking the question to also provide answers, but the controls will work even if there is no player joined from this page.
 
-``distrobox create -i ghcr.io/gleam-lang/gleam:v1.12.0-erlang-alpine -n gleamdev``
+![Screenshot of the game](screenshot.png)
 
-and to enter the distrobox container:
-
-``distrobox enter gleamdev``
-
-Nativate to the folder with the gleam.toml file and type
-
-``gleam run``
-
-The server should then be reachable on http://localhost:1234
-
-#### Testing the code using Docker
-
-The provided Docker-file contains all the steps to compile, package and create the image, so project can be
-build and run without having gleam / erlang installed, with standard docker commands.
-
-In the folder that contains Dockerfile, build the docker image by writing:
-
-``docker build -t quiz/quizterm .``
-
-and run it by writing:
-
-``docker run -p 1234:1234 quiz/quizterm``
-
-The server should then be reachable on http://localhost:1234
+Next steps are:
+- Display questions. Currently, Quizterm only asks user to provide answer, the actual question needs to be asked
+elsewhere. This is often not a problem, since questions are asked on site, or in streamed meetings.
+- Make it a little harder to join a quiz. So far, a quiz is open, and anyone that knows the URL can easily join.
+A good idea to deploy to a disposable URL.
+- Bad handling of players with the same name. If a player register with a name that is already in used, two players
+will "compete" about being this player. You need to make sure to register with a different name than those already in
+use. As all "in use" names are displayed on your screen, this is somewhat doable.
