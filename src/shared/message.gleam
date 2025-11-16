@@ -3,6 +3,7 @@ import gleam/option.{type Option}
 pub type NotifyServer {
   AnswerQuiz
   RevealAnswer
+  PurgePlayers
   GiveName(name: String)
   GiveAnswer(name: String, answer: Option(String))
 }
@@ -15,6 +16,7 @@ pub type AnswerStatus {
 }
 
 pub type NotifyClient {
+  Exit
   Lobby(names: List(User))
   Answer
   Await

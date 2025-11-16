@@ -1,4 +1,6 @@
 import gleam/erlang/process
+import gleam/int
+import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/otp/actor
@@ -6,7 +8,7 @@ import group_registry.{type GroupRegistry}
 import shared/message.{
   type AnswerStatus, type NotifyClient, Answer, AnswerQuiz, Await, GiveAnswer,
   GiveName, GivenAnswer, HasAnswered, IDontKnow, Lobby, NotAnswered,
-  RevealAnswer, User,
+  PurgePlayers, RevealAnswer, User,
 }
 
 type State {
@@ -17,6 +19,11 @@ pub fn initialize(registry: GroupRegistry(NotifyClient)) {
   actor.new(State([], True))
   |> actor.on_message(fn(state: State, message) {
     case message {
+      PurgePlayers -> {
+        broadcast(registry, message.Exit)
+        State([], True)
+        |> broadcast_lobby(registry)
+      }
       GiveName(name) -> {
         // Let the new client (and everyone else) know the current question state
         case state.hide_answers {
@@ -31,14 +38,35 @@ pub fn initialize(registry: GroupRegistry(NotifyClient)) {
         |> broadcast_lobby(registry)
       }
       GiveAnswer(name, answer) -> {
-        State(
-          list.key_set(state.name_answers, name, case answer {
-            Some("?") -> IDontKnow
-            Some(answer) -> GivenAnswer(answer)
-            None -> IDontKnow
-          }),
-          state.hide_answers,
-        )
+        let state =
+          State(
+            list.key_set(state.name_answers, name, case answer {
+              Some("?") -> IDontKnow
+              Some(answer) -> GivenAnswer(answer)
+              None -> IDontKnow
+            }),
+            state.hide_answers,
+          )
+        // Check if everyone has answered, if so, reveal answer.
+        case
+          list.filter(state.name_answers, fn(x) {
+            case x {
+              #(_, message.NotAnswered) -> True
+              _ -> False
+            }
+          })
+          |> list.length
+        {
+          0 -> {
+            io.print("State is zero")
+            broadcast(registry, Await)
+            State(..state, hide_answers: False)
+          }
+          len -> {
+            io.println("State is " <> int.to_string(len))
+            state
+          }
+        }
         |> broadcast_lobby(registry)
       }
       AnswerQuiz -> {

@@ -88,6 +88,10 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       Model(..model, lobby: lobby),
       effect.none(),
     )
+    SharedMessage(message.Exit) -> #(
+      Model(AskName, [], model.registry, handler),
+      effect.none(),
+    )
     SharedMessage(message.Answer) ->
       case model.state {
         WaitForQuiz(name) -> #(
@@ -154,7 +158,8 @@ fn view(model: Model) -> Element(Msg) {
         let answered =
           list.filter(lobby, fn(x) {
             case x.answer {
-              message.HasAnswered | message.GivenAnswer(_) -> True
+              message.IDontKnow | message.HasAnswered | message.GivenAnswer(_) ->
+                True
               _ -> False
             }
           })
