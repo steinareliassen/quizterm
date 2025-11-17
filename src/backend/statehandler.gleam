@@ -1,6 +1,4 @@
 import gleam/erlang/process
-import gleam/int
-import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/otp/actor
@@ -58,14 +56,10 @@ pub fn initialize(registry: GroupRegistry(NotifyClient)) {
           |> list.length
         {
           0 -> {
-            io.print("State is zero")
             broadcast(registry, Await)
             State(..state, hide_answers: False)
           }
-          len -> {
-            io.println("State is " <> int.to_string(len))
-            state
-          }
+          _ -> state
         }
         |> broadcast_lobby(registry)
       }

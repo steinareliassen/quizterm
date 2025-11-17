@@ -1,7 +1,6 @@
 // IMPORTS ---------------------------------------------------------------------
 import gleam/dynamic/decode
 import gleam/erlang/process.{type Subject}
-import gleam/io
 import gleam/otp/actor.{type Started}
 import gleam/pair
 import group_registry.{type GroupRegistry}
@@ -91,22 +90,32 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 }
 
 fn view(model: Model) -> Element(Msg) {
-  case model.state {
-    Quiz -> {
-      element.fragment([
+  element.fragment([
+    case model.state {
+      Quiz -> {
         keyed.div([attribute.class("control")], [
           #("reveal", view_button("Reveal answers", AnnounceAnswer)),
-        ]),
-      ])
-    }
-    Reveal -> {
-      element.fragment([
+        ])
+      }
+      Reveal -> {
         keyed.div([attribute.class("control")], [
           #("next", view_button("Ask for next answer", AnnounceQuiz)),
+        ])
+      }
+    },
+    keyed.div([attribute.class("control")], [
+      #(
+        "p",
+        html.p([], [
+          html.p([], [html.text(" ")]),
+          html.p([], [html.text(" ")]),
+          html.p([], [html.text(" ")]),
+          html.p([], [html.text("Danger zone!")]),
         ]),
-      ])
-    }
-  }
+      ),
+      #("stuff", view_button("!!! Purge players !!!", PurgePlayers)),
+    ]),
+  ])
 }
 
 fn view_button(text: String, on_submit handle_keydown: msg) -> Element(msg) {
