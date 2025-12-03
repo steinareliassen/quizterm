@@ -11,18 +11,18 @@ import gleam/option.{None}
 import gleam/otp/actor
 import gleam/result
 import group_registry
-import lustre/attribute
+import lustre/attribute.{class}
 import lustre/element
-import lustre/element/html.{
-  body, div, head, html, img, link, meta, script, title,
-}
+import lustre/element/html.{body, div, head, html, link, meta, script, title}
 import lustre/server_component
 import mist.{type Connection, type ResponseData}
+import shared/message
 
 pub fn main() {
   let name = process.new_name("quiz-registry")
   let assert Ok(actor.Started(data: registry, ..)) = group_registry.start(name)
   let assert Ok(actor) = statehandler.initialize(registry)
+  process.send_after(actor.data, 1000, message.PingTime(actor.data))
   let assert Ok(_) =
     fn(request: Request(Connection)) -> Response(ResponseData) {
       case request.path_segments(request) {
@@ -47,41 +47,49 @@ pub fn main() {
 
 fn serve_html(control: Bool) -> Response(ResponseData) {
   let html =
-    html([attribute.lang("en")], [
+    html([], [
       head([], [
+        meta([attribute.charset("utf-8")]),
+        meta([
+          attribute.name("viewport"),
+          attribute.content("width=device-width, initial-scale=1.0"),
+        ]),
+        title([], "QUIZTERMINAL v1.0"),
+        script(
+          [attribute.type_("module"), attribute.src("/lustre/runtime.mjs")],
+          "",
+        ),
         link([
           attribute.rel("stylesheet"),
           attribute.type_("text/css"),
           attribute.href("/static/layout.css"),
         ]),
-        meta([attribute.charset("utf-8")]),
-        meta([
-          attribute.name("viewport"),
-          attribute.content("width=device-width, initial-scale=1"),
-        ]),
-        title([], "Quizterm"),
-        script(
-          [attribute.type_("module"), attribute.src("/lustre/runtime.mjs")],
-          "",
-        ),
       ]),
       body([], [
-        case control {
-          False -> server_component.element([server_component.route("/ws")], [])
-          True ->
-            div([], [
-              server_component.element([server_component.route("/ws")], []),
-              server_component.element([server_component.route("/cws")], []),
-            ])
-        },
-        div([attribute.class("under")], [
-          div([attribute.class("under_cell_nb")], []),
-          div([attribute.class("under_cell_nb")], []),
-          div([attribute.class("under_cell_bn")], [
-            img([
-              attribute.src("https://gleam.run/images/lucy/lucydebugfail.svg"),
-              attribute.width(150),
+        div([class("terminal-screen")], [
+          div([class("terminal-glow")], [
+            div([class("scanlines")], []),
+
+            // title
+            div([class("terminal-header")], [
+              html.pre([class("terminal-title")], [
+                html.text(
+                  "╔═══════════════════════════════════════╗
+║       Q U I Z T E R M I N A L         ║
+╚═══════════════════════════════════════╝",
+                ),
+              ]),
             ]),
+            // sections
+            case control {
+              False ->
+                server_component.element([server_component.route("/ws")], [])
+              True ->
+                div([], [
+                  server_component.element([server_component.route("/ws")], []),
+                  server_component.element([server_component.route("/cws")], []),
+                ])
+            },
           ]),
         ]),
       ]),

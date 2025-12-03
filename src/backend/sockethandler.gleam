@@ -86,6 +86,6 @@ fn loop_socket(
 }
 
 fn close_socket(state: Socket(msg)) -> Nil {
-  server_component.deregister_subject(state.self)
+  lustre.shutdown()
   |> lustre.send(to: state.component)
 }

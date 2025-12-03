@@ -4,14 +4,12 @@ import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/otp/actor.{type Started}
-import gleam/string
 import group_registry.{type GroupRegistry}
 import lustre
-import lustre/attribute
+import lustre/attribute.{class}
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html
-import lustre/element/keyed
 import lustre/event
 import lustre/server_component
 import shared/message.{type NotifyClient, type NotifyServer, type User, User}
@@ -108,51 +106,67 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         )
         _ -> #(model, effect.none())
       }
+    SharedMessage(message.Ping) -> {
+      let has_name = case model.state {
+        Answer(name) -> Some(name)
+        WaitForQuiz(name) -> Some(name)
+        _ -> None
+      }
+      case has_name {
+        Some(name) -> actor.send(handler.data, message.Pong(name))
+        _ -> Nil
+      }
+      #(model, effect.none())
+    }
   }
+}
+
+fn step_prompt(text: String, fetch: fn() -> Element(Msg)) {
+  html.div([attribute.class("prompt-line")], [
+    html.span([attribute.class("prompt-text")], [
+      html.text(text),
+    ]),
+    fetch(),
+  ])
 }
 
 fn view(model: Model) -> Element(Msg) {
   element.fragment([
-    keyed.div([attribute.class("center")], [
-      #("header", html.h1([], [html.text("QUIZTerminal")])),
+    html.div([attribute.class("terminal-prompt")], [
       case model.state {
-        AskName -> #(
-          "name",
-          html.div([], [
-            html.h3([], [
-              html.text(
-                "Hello stranger. To join the quiz, I need to know your name",
-              ),
-            ]),
-            view_input("Name $> ", ReceiveName),
-          ]),
-        )
-        NameOk(name) -> #(
-          "accept",
-          html.div([], [
-            html.h3([], [
-              html.text(
-                "Your name is " <> name <> "? Are you absolutely sure???",
-              ),
-            ]),
-            view_accept("Press <Y>es or <N>o $>", name, AcceptName),
-          ]),
-        )
-        Answer(name) -> #(
-          "answer",
-          html.div([], [
-            html.h3([], [
-              html.text(
-                "The Quiz Lead will now ask the question, and you may answer.",
-              ),
-            ]),
-            view_named_input("Answer $>", name, GiveAnswer),
-          ]),
-        )
-        _ -> #("await", html.h3([], [html.text("Waiting for next question")]))
+        AskName ->
+          step_prompt(
+            "Hello stranger. To join the quiz, I need to know your name",
+            fn() { view_input("$> ", ReceiveName) },
+          )
+        NameOk(name) ->
+          step_prompt(
+            "Your name is " <> name <> "? Are you absolutely sure???",
+            fn() { view_yes_no("$>", name, AcceptName) },
+          )
+        Answer(name) ->
+          step_prompt(
+            "The Quiz Lead will now ask the question, and you may answer.",
+            fn() { view_named_input("Answer $>", name, GiveAnswer) },
+          )
+        _ -> html.h3([], [html.text("Waiting for next question")])
       },
     ]),
-    html.div([attribute.class("under")], case model.lobby {
+    html.div([class("terminal-header")], [
+      html.div([class("terminal-status")], [
+        html.span([class("status-blink")], [html.text("●")]),
+        html.text(" SYSTEM READY"),
+        html.span([class("ml-8")], [
+          case model.state {
+            AskName -> html.text("STATUS: Please input your name")
+            NameOk(_) -> html.text("STATUS: Please validate your name")
+            Answer(_) -> html.text("STATUS: Answer the question")
+            _ -> html.text("STATUS: Waiting for next question")
+          },
+        ]),
+      ]),
+    ]),
+    html.div([class("terminal-section")], case model.lobby {
       [] -> []
       lobby -> {
         let answered =
@@ -167,100 +181,120 @@ fn view(model: Model) -> Element(Msg) {
           |> int.to_string
         let size = lobby |> list.length |> int.to_string
         [
-          html.div([attribute.class("under_cell_nb")], []),
-          html.div([attribute.class("under_cell")], [
-            html.h3([], [
-              html.text("Answered:"),
+          html.div([attribute.class("terminal-box")], [
+            html.span([attribute.class("terminal-label")], [
+              html.text("[PROGRESS] "),
             ]),
+            html.text("Answered: "),
             case answered == size {
               True -> html.text("Everyone!")
               False -> html.text(answered <> "/" <> size)
             },
           ]),
-          html.div([attribute.class("under_cell_nb")], []),
         ]
       }
     }),
-    html.div(
-      [attribute.class("under")],
-      list.filter(model.lobby, fn(x) {
+    terminal_section(
+      model.lobby,
+      "[ACTIVE TRANSMISSIONS]",
+      fn(x) {
         case x.answer {
           message.GivenAnswer(_) | message.HasAnswered -> True
           _ -> False
         }
-      })
-        |> list.map(fn(user) {
-          let User(name, answer) = user
-          case answer {
-            message.GivenAnswer(answer) -> answer
-            message.HasAnswered -> "Answer Given"
-            _ -> "Odd State..."
-          }
-          |> content_cell(name, _)
-        }),
+      },
+      fn(user) {
+        let User(name, ping_time, answer) = user
+        case answer {
+          message.GivenAnswer(answer) -> answer
+          message.HasAnswered -> "Answer Given"
+          _ -> "Odd State..."
+        }
+        |> content_cell(name, ping_time, _)
+      },
     ),
-    html.div(
-      [attribute.class("under")],
-      list.filter(model.lobby, fn(x) {
+    terminal_section(
+      model.lobby,
+      "[P A S S]",
+      fn(x) {
         case x.answer {
           message.IDontKnow -> True
           _ -> False
         }
-      })
-        |> list.map(fn(user) {
-          let User(name, _) = user
-          content_cell(name, "P.A.S.S :(")
-        }),
+      },
+      fn(user) {
+        let User(name, ping_time, _) = user
+        content_cell(name, ping_time, "P.A.S.S :(")
+      },
     ),
-    html.div(
-      [attribute.class("under")],
-      list.filter(model.lobby, fn(x) {
+    terminal_section(
+      model.lobby,
+      "[AWAITING RESPONSE]",
+      fn(x) {
         case x.answer {
           message.NotAnswered -> True
           _ -> False
         }
-      })
-        |> list.map(fn(user) {
-          case user {
-            User(name, _) -> content_cell(name, "Not Answered")
-          }
-        }),
+      },
+      fn(user) {
+        case user {
+          User(name, ping_time, _) ->
+            content_cell(name, ping_time, "Not Answered")
+        }
+      },
     ),
   ])
 }
 
-fn content_cell(header: String, content: String) {
-  html.div([attribute.class("under_cell")], [
-    html.h3([], [
+fn terminal_section(
+  lobby: List(User),
+  header: String,
+  filter: fn(User) -> Bool,
+  extract: fn(User) -> Element(Msg),
+) {
+  html.div([attribute.class("terminal-section")], [
+    html.div([attribute.class("terminal-label mb-4")], [
       html.text(header),
     ]),
-    html.text(content),
+    html.div(
+      [attribute.class("participants-grid")],
+      list.filter(lobby, filter)
+        |> list.map(extract),
+    ),
   ])
 }
 
-fn view_accept(
+fn content_cell(header: String, ping_time: Int, content: String) -> Element(Msg) {
+  html.div(
+    [
+      class(case ping_time > 1 {
+        True -> "participant-disconnect"
+        False -> "participant-box"
+      }),
+    ],
+    [
+      html.div([class("participant-name")], [
+        html.text("► " <> header),
+      ]),
+      html.div([class("participant-answer")], [
+        html.text(content),
+      ]),
+    ],
+  )
+}
+
+fn view_yes_no(
   prompt: String,
   accepted: String,
   on_submit handle_keydown: fn(Option(String)) -> msg,
 ) -> Element(msg) {
-  let on_keydown =
-    event.on("keydown", {
-      use value <- decode.field("key", decode.string)
-      let result = case string.lowercase(value) {
-        "y" -> Some(accepted)
-        _ -> None
-      }
-      decode.success(handle_keydown(result))
-    })
-    |> server_component.include(["key"])
-
   html.div([], [
     html.text(prompt),
-    html.input([
-      attribute.class("input"),
-      on_keydown,
-      attribute.autofocus(True),
+    html.button([event.on_click(handle_keydown(Some(accepted)))], [
+      html.text(" <Yes> "),
     ]),
+    html.text(" - "),
+    html.button([event.on_click(handle_keydown(None))], [html.text(" <No> ")]),
   ])
 }
 
