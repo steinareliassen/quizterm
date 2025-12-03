@@ -1,53 +1,260 @@
+/* Reset and Base Styles */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
 body {
-    background-color: #000000;
-    color: #73ad21;
+    background: #000;
+    color: #00ff00;
+    font-family: "Courier New", "Courier", monospace;
+    overflow-x: hidden;
+    height: 100vh;
 }
-.center {
-    margin: auto;
-    width: 50%;
-    border: 3px solid #73ad21;
-    padding: 10px;
+
+/* Terminal Screen Container */
+.terminal-screen {
+    min-height: 100vh;
+    background: #000;
+    padding: 2rem;
+    padding-bottom: 5rem; /* Space for prompt */
+    position: relative;
 }
-.under {
-    margin: auto;
-    cursor: default;
-    margin-bottom: 8px;
+
+/* CRT Glow Effect */
+.terminal-glow {
+    position: relative;
+    text-shadow:
+        0 0 5px rgba(0, 255, 0, 0.8),
+        0 0 10px rgba(0, 255, 0, 0.5),
+        0 0 20px rgba(0, 255, 0, 0.3);
+    animation: flicker 0.15s infinite alternate;
+}
+
+/* Scanlines Effect */
+.scanlines {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: repeating-linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.15),
+        rgba(0, 0, 0, 0.15) 1px,
+        transparent 1px,
+        transparent 2px
+    );
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.3;
+}
+
+/* Terminal Header */
+.terminal-header {
+    text-align: center;
+    margin-bottom: 3rem;
+    position: relative;
+    z-index: 1;
+}
+
+.terminal-title {
+    font-size: 1.25rem;
+    line-height: 1.6;
+    letter-spacing: 0.05em;
+    color: #00ff00;
+    margin-bottom: 1rem;
+    white-space: pre-wrap;
+    display: inline-block;
+    text-align: left;
+}
+
+.terminal-status {
+    font-size: 0.875rem;
+    margin-top: 1rem;
+    color: #00aa00;
+}
+
+.status-blink {
+    animation: blink 1s infinite;
+    color: #00ff00;
+}
+
+.mb-4 {
+    margin-bottom: 1rem;
+}
+
+/* Terminal Sections */
+.terminal-section {
+    margin-bottom: 2rem;
+    position: relative;
+    z-index: 1;
+}
+
+.terminal-box {
+    border: 2px solid #00ff00;
+    padding: 1rem;
+    text-align: center;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.terminal-label {
+    color: #00ff00;
+    font-weight: bold;
+    display: inline-block;
+}
+
+/* Participants Grid */
+.participants-grid {
     display: grid;
-    width: 50%;
-    grid-template-columns: 33% 33% 33%;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+    max-width: 1200px;
+    margin: 0 auto;
 }
 
-.under_cell {
-    text-align: center;
-    border: 3px solid #73ad21;
-    margin: 5px;
-    width: 95%;
-    min-height: 75px;
+.participant-box {
+    border: 2px solid #00ff00;
+    padding: 1rem;
+    transition: all 0.2s;
 }
 
-.under_cell_nb {
-    text-align: center;
-    margin: 5px;
-    width: 95%;
-    min-height: 75px;
+.participant-disconnect {
+    border: 1px dashed #005500;
+    padding: 1rem;
+    transition: all 0.2s;
 }
 
-.control {
-    margin: auto;
-    text-align: center;
-    cursor: default;
-    margin-bottom: 8px;
-    display: grid;
-    width: 50%;
-    grid-template-columns: 100%
-    border: 3px solid #73ad21;
-    padding: 10px;
+.participant-box:hover {
+    background: rgba(0, 255, 0, 0.05);
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+}
+
+.participant-name {
+    color: #00ff00;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    font-size: 1rem;
+}
+
+.participant-answer {
+    color: #00aa00;
+    font-size: 0.875rem;
+}
+
+.dim {
+    color: #006600;
+}
+
+/* Terminal Prompt */
+.terminal-prompt {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #000;
+    border-top: 2px solid #00ff00;
+    padding: 1rem 2rem;
+    z-index: 100;
+}
+
+.prompt-line {
+    font-size: 1.125rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.prompt-symbol {
+    color: #00ff00;
+    font-weight: bold;
+}
+
+.prompt-text {
+    color: #00ff00;
+}
+
+/* Blinking Cursor */
+.cursor-blink {
+    animation: blink 1s infinite;
+    color: #00ff00;
+    font-weight: bold;
+}
+
+/* Animations */
+@keyframes blink {
+    0%,
+    49% {
+        opacity: 1;
+    }
+    50%,
+    100% {
+        opacity: 0;
+    }
+}
+
+@keyframes flicker {
+    0% {
+        opacity: 0.98;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .terminal-screen {
+        padding: 1rem;
+        padding-bottom: 4rem;
+    }
+
+    .terminal-title {
+        font-size: 0.875rem;
+    }
+
+    .participants-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .terminal-prompt {
+        padding: 0.75rem 1rem;
+    }
+
+    .prompt-line {
+        font-size: 0.875rem;
+    }
+
+    .ml-8 {
+        margin-left: 0;
+        display: block;
+        margin-top: 0.5rem;
+    }
 }
 
 input {
     background-color: #000000;
     color: #00ff00;
     width: 20cap;
+}
+
+input:focus {
+    background-color: #000000;
+    width: 20cap;
+    border-color: #00ff00;
+    outline: none;
+}
+
+button {
+    background-color: #000000;
+    color: #00ff00;
+    border: 3px solid #73ad21;
+}
+
+button:focus {
+    border: 3px solid #534d01;
 }
 
 .controlbutton {
@@ -59,11 +266,4 @@ input {
 
 .controlbutton:focus {
     border: 3px solid #534d01;
-}
-
-input:focus {
-    background-color: #000000;
-    width: 20cap;
-    border-color: #00ff00;
-    outline: none;
 }
