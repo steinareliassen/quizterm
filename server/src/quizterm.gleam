@@ -23,6 +23,7 @@ pub fn main() {
   let assert Ok(actor.Started(data: registry, ..)) = group_registry.start(name)
   let assert Ok(actor) = statehandler.initialize(registry)
   process.send_after(actor.data, 1000, message.PingTime(actor.data))
+
   let assert Ok(_) =
     fn(request: Request(Connection)) -> Response(ResponseData) {
       case request.path_segments(request) {

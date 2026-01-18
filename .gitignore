@@ -1,5 +1,9 @@
-manifest.toml
-/build
+/client/build
+/client/manifest.toml
+/server/build
+/server/manifest.toml
+/shared/build
+/shared/manifest.toml
 # ---> Erlang
 .eunit
 *.o
