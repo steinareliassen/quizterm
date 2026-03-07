@@ -1,5 +1,9 @@
 import gleam/erlang/process.{type Subject}
+import gleam/otp/actor.{type Started}
 import gleam/option.{type Option}
+import group_registry.{type GroupRegistry}
+
+pub type ClientsServer = #(GroupRegistry(NotifyClient), Started(Subject(NotifyServer)))
 
 pub type NotifyServer {
   PingTime(Subject(NotifyServer))
@@ -9,6 +13,11 @@ pub type NotifyServer {
   PurgePlayers
   GiveName(name: String)
   GiveAnswer(name: String, answer: Option(String))
+}
+
+pub type RoomControl(msg) {
+  CreateRoom(id: String)
+  Response(id: String, subject: Subject(msg))
 }
 
 pub type AnswerStatus {

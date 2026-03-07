@@ -1,5 +1,5 @@
+import backend/roomhandler
 import backend/sockethandler
-import backend/statehandler
 import components/card
 import components/control
 import gleam/bytes_tree
@@ -7,10 +7,9 @@ import gleam/erlang/application
 import gleam/erlang/process
 import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
+import gleam/io
 import gleam/option.{None}
-import gleam/otp/actor
 import gleam/result
-import group_registry
 import lustre/attribute.{class}
 import lustre/element
 import lustre/element/html.{body, div, head, html, link, meta, script, title}
@@ -19,33 +18,71 @@ import mist.{type Connection, type ResponseData}
 import shared/message
 
 pub fn main() {
-  let name = process.new_name("quiz-registry")
-  let assert Ok(actor.Started(data: registry, ..)) = group_registry.start(name)
-  let assert Ok(actor) = statehandler.initialize(registry)
-  process.send_after(actor.data, 1000, message.PingTime(actor.data))
+  echo "Starting"
+  io.println("Starting 1234")
+  let assert Ok(actor) = roomhandler.initialize()
   let assert Ok(_) =
     fn(request: Request(Connection)) -> Response(ResponseData) {
       case request.path_segments(request) {
-        [] -> serve_html(False)
-        ["control"] -> serve_html(True)
+        [] -> status_head("Nothing to see here") |> serve_html
         ["lustre", "runtime.mjs"] -> serve_runtime()
         ["static", file] -> serve_static(file)
-        ["ws"] ->
-          sockethandler.serve(request, card.component(), #(registry, actor))
-        ["cws"] ->
-          sockethandler.serve(request, control.component(), #(registry, actor))
+
+        ["socket", "card", id] ->
+          sockethandler.serve(request, card.component(), id, actor)
+        ["socket", "control", id] ->
+          sockethandler.serve(request, control.component(), id, actor)
+
+        ["board", id] -> handle_board(id, False) |> serve_html
+        ["board", id, "control"] -> handle_board(id, True) |> serve_html
+
+        ["room", id] -> {
+          process.send(actor.data, message.CreateRoom(id))
+          status_head("Room with id " <> id <> "created")
+          |> serve_html()
+        }
         _ -> response.set_body(response.new(404), mist.Bytes(bytes_tree.new()))
       }
     }
     |> mist.new
-    |> mist.bind("localhost")
+    |> mist.bind("0.0.0.0")
     |> mist.port(1234)
     |> mist.start
 
   process.sleep_forever()
 }
 
-fn serve_html(control: Bool) -> Response(ResponseData) {
+fn status_head(output: String) {
+  fn() -> element.Element(a) {
+    html.div([class("terminal-header")], [
+      html.div([class("terminal-status")], [
+        html.span([class("status-blink")], [html.text("●")]),
+        html.h2([class("ml-8")], [html.text(output)]),
+      ]),
+    ])
+  }
+}
+
+fn handle_board(id: String, control: Bool) -> fn() -> element.Element(a) {
+  fn() {
+    div([], [
+      server_component.element(
+        [server_component.route("/socket/card/" <> id)],
+        [],
+      ),
+      case control {
+        True ->
+          server_component.element(
+            [server_component.route("/socket/control/" <> id)],
+            [],
+          )
+        False -> element.none()
+      },
+    ])
+  }
+}
+
+fn serve_html(content: fn() -> element.Element(a)) -> Response(ResponseData) {
   let html =
     html([], [
       head([], [
@@ -74,22 +111,16 @@ fn serve_html(control: Bool) -> Response(ResponseData) {
             div([class("terminal-header")], [
               html.pre([class("terminal-title")], [
                 html.text(
-                  "╔═══════════════════════════════════════╗
+                  "
+╔═══════════════════════════════════════╗
 ║       Q U I Z T E R M I N A L         ║
-╚═══════════════════════════════════════╝",
+╚═══════════════════════════════════════╝
+",
                 ),
               ]),
             ]),
-            // sections
-            case control {
-              False ->
-                server_component.element([server_component.route("/ws")], [])
-              True ->
-                div([], [
-                  server_component.element([server_component.route("/ws")], []),
-                  server_component.element([server_component.route("/cws")], []),
-                ])
-            },
+            // Insert content
+            content(),
           ]),
         ]),
       ]),

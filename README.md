@@ -14,11 +14,25 @@ There are two endpoints to use:
 
 ![Screenshot of the game](screenshot.png)
 
-Next steps are:
-- Display questions. Currently, Quizterm only asks user to provide answer, the actual question needs to be asked
-elsewhere. This is often not a problem, since questions are asked on site, or in streamed meetings.
-- Make it a little harder to join a quiz. So far, a quiz is open, and anyone that knows the URL can easily join.
-A good idea to deploy to a disposable URL.
-- Bad handling of players with the same name. If a player register with a name that is already in used, two players
-will "compete" about being this player. You need to make sure to register with a different name than those already in
-use. As all "in use" names are displayed on your screen, this is somewhat doable.
+### Building and running
+
+Docker, or a compatible container manager, like podman, is required to build and run
+quizterm. 
+
+To compile project and build docker image, write:
+'''
+docker build . -t quizterm:1
+'''
+quizterm can be whatever name you want to give the container, 1 can be 
+changed to whatever you want the version of the container to be.
+
+Start server on port 4321:
+'''
+docker run -p 4321:1234 quizterm:1
+'''
+
+Port 1234 is the port used internally in the docker container, while 4321
+is the port exposed outside the container. The latter can be set to whatever
+port you want to use.
+
+Open web browser and access http://localhost:4321

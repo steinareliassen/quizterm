@@ -3,15 +3,19 @@ import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
 import gleam/json
 import gleam/option.{type Option, Some}
+import gleam/otp/actor
 import lustre
 import lustre/server_component
 import mist.{type Connection, type ResponseData}
+import shared/message
 
 pub fn serve(
   request: Request(Connection),
   component: lustre.App(start_args, model, msg),
-  start_args: start_args,
+  id: String,
+  actor: actor.Started(Subject(message.RoomControl(start_args))),
 ) -> Response(ResponseData) {
+  let start_args = actor.call(actor.data, 1000, message.Response(id, _))
   mist.websocket(
     request:,
     on_init: init_socket(_, component, start_args),
@@ -30,7 +34,7 @@ type Socket(msg) {
 type SocketMessage(msg) =
   server_component.ClientMessage(msg)
 
-type SocketInit(msg) =
+pub type SocketInit(msg) =
   #(Socket(msg), Option(Selector(SocketMessage(msg))))
 
 fn init_socket(

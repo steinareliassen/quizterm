@@ -20,7 +20,6 @@ pub fn initialize(registry: GroupRegistry(NotifyClient)) {
       message.PingTime(sender) -> {
         broadcast(registry, message.Ping)
         process.send_after(sender, 2000, message.PingTime(sender))
-
         State(
           ..state,
           // Increase ping count with one,
