@@ -1,8 +1,9 @@
+import gleam/bytes_tree
 import gleam/erlang/process.{type Selector, type Subject}
 import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
 import gleam/json
-import gleam/option.{type Option, Some}
+import gleam/option.{type Option, None, Some}
 import gleam/otp/actor
 import lustre
 import lustre/server_component
@@ -16,12 +17,21 @@ pub fn serve(
   actor: actor.Started(Subject(message.RoomControl(start_args))),
 ) -> Response(ResponseData) {
   let start_args = actor.call(actor.data, 1000, message.Response(id, _))
-  mist.websocket(
-    request:,
-    on_init: init_socket(_, component, start_args),
-    handler: loop_socket,
-    on_close: close_socket,
-  )
+  case start_args {
+    Some(start_args) ->
+      mist.websocket(
+        request:,
+        on_init: init_socket(_, component, start_args),
+        handler: loop_socket,
+        on_close: close_socket,
+      )
+    None ->
+      response.new(404)
+      |> response.set_body(
+        bytes_tree.from_string("Requested resource not found") |> mist.Bytes,
+      )
+      |> response.set_header("content-type", "text/html")
+  }
 }
 
 type Socket(msg) {

@@ -9,6 +9,7 @@ import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
 import gleam/io
 import gleam/option.{None}
+import gleam/otp/actor
 import gleam/result
 import lustre/attribute.{class}
 import lustre/element
@@ -28,17 +29,18 @@ pub fn main() {
         ["lustre", "runtime.mjs"] -> serve_runtime()
         ["static", file] -> serve_static(file)
 
-        ["socket", "card", id] ->
+        ["socket", "card", id] -> {
           sockethandler.serve(request, card.component(), id, actor)
+        }
         ["socket", "control", id] ->
           sockethandler.serve(request, control.component(), id, actor)
 
-        ["board", id] -> handle_board(id, False) |> serve_html
-        ["board", id, "control"] -> handle_board(id, True) |> serve_html
+        ["board", id] -> handle_board(actor, id, False) |> serve_html
+        ["board", id, "control"] -> handle_board(actor, id, True) |> serve_html
 
         ["room", id] -> {
           process.send(actor.data, message.CreateRoom(id))
-          status_head("Room with id " <> id <> "created")
+          status_head("Created room with id " <> id)
           |> serve_html()
         }
         _ -> response.set_body(response.new(404), mist.Bytes(bytes_tree.new()))
@@ -63,22 +65,32 @@ fn status_head(output: String) {
   }
 }
 
-fn handle_board(id: String, control: Bool) -> fn() -> element.Element(a) {
-  fn() {
-    div([], [
-      server_component.element(
-        [server_component.route("/socket/card/" <> id)],
-        [],
-      ),
-      case control {
-        True ->
-          server_component.element(
-            [server_component.route("/socket/control/" <> id)],
-            [],
-          )
-        False -> element.none()
-      },
-    ])
+fn handle_board(
+  actor: actor.Started(
+    process.Subject(message.RoomControl(message.ClientsServer)),
+  ),
+  id: String,
+  control: Bool,
+) -> fn() -> element.Element(a) {
+  let start_args = actor.call(actor.data, 1000, message.Response(id, _))
+  case start_args {
+    option.Some(_) -> fn() {
+      div([], [
+        server_component.element(
+          [server_component.route("/socket/card/" <> id)],
+          [],
+        ),
+        case control {
+          True ->
+            server_component.element(
+              [server_component.route("/socket/control/" <> id)],
+              [],
+            )
+          False -> element.none()
+        },
+      ])
+    }
+    option.None -> status_head("Could not find that room...")
   }
 }
 

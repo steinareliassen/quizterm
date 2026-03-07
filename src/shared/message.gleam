@@ -17,7 +17,7 @@ pub type NotifyServer {
 
 pub type RoomControl(msg) {
   CreateRoom(id: String)
-  Response(id: String, subject: Subject(msg))
+  Response(id: String, subject: Subject(Option(msg)))
 }
 
 pub type AnswerStatus {
