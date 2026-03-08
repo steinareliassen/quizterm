@@ -16,7 +16,7 @@ pub fn serve(
   id: String,
   actor: actor.Started(Subject(message.RoomControl(start_args))),
 ) -> Response(ResponseData) {
-  let start_args = actor.call(actor.data, 1000, message.Response(id, _))
+  let start_args = actor.call(actor.data, 1000, message.FetchRoom(id, _))
   case start_args {
     Some(start_args) ->
       mist.websocket(

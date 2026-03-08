@@ -72,7 +72,7 @@ fn handle_board(
   id: String,
   control: Bool,
 ) -> fn() -> element.Element(a) {
-  let start_args = actor.call(actor.data, 1000, message.Response(id, _))
+  let start_args = actor.call(actor.data, 1000, message.FetchRoom(id, _))
   case start_args {
     option.Some(_) -> fn() {
       div([], [

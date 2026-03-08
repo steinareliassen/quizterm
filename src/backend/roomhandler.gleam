@@ -6,6 +6,13 @@ import gleam/otp/actor
 import group_registry
 import shared/message.{type ClientsServer, type RoomControl}
 
+// Room handler, actor to hold the rooms for the different teams playing.
+//
+// Reacts to:
+// CreateRoom(id) - create room with given ID. Todo: need to handle room existing.
+//
+// Responds to:
+// FetchRoom(id, <subject>) - Fetch room with the given id.
 type Room {
   Room(rooms: List(#(String, ClientsServer)))
 }
@@ -22,7 +29,7 @@ pub fn initialize() {
         process.send_after(actor.data, 1000, message.PingTime(actor.data))
         Room(rooms: [#(id, #(registry, actor)), ..state.rooms])
       }
-      message.Response(id, a) -> {
+      message.FetchRoom(id:, subject:) -> {
         case
           list.find(state.rooms, fn(a) {
             case a {
@@ -30,8 +37,8 @@ pub fn initialize() {
             }
           })
         {
-          Ok(#(_, room)) -> actor.send(a, Some(room))
-          Error(_) -> actor.send(a, option.None)
+          Ok(#(_, room)) -> actor.send(subject, Some(room))
+          Error(_) -> actor.send(subject, option.None)
         }
         state
       }
