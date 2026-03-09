@@ -85,6 +85,11 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       #(Model(Reveal, registry:, handler:), effect.none())
     }
     End -> #(model, effect.none())
+    SharedMessage(message.Await) -> #(
+      Model(Reveal, registry:, handler:),
+      effect.none(),
+    )
+
     SharedMessage(_) -> #(model, effect.none())
   }
 }

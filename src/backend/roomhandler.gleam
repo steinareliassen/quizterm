@@ -14,7 +14,7 @@ import shared/message.{type ClientsServer, type RoomControl}
 //
 // Responds to:
 // FetchRoom(id, <subject>) - Fetch room with the given id.
-//
+
 type Room {
   Room(rooms: List(#(String, ClientsServer)))
 }
