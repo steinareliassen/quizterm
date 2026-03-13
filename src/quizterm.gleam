@@ -1,6 +1,7 @@
 import backend/roomhandler
 import backend/sockethandler
 import components/card
+import components/answerlist
 import components/control
 import gleam/bytes_tree
 import gleam/erlang/application
@@ -34,7 +35,9 @@ pub fn main() {
         }
         ["socket", "control", id] ->
           sockethandler.serve(request, control.component(), id, actor)
-
+        ["socket", "slow", id] ->
+          sockethandler.serve(request, answerlist.component(), id, actor)
+        ["board", id, "slow"] -> handle_slow(actor, id) |> serve_html
         ["board", id] -> handle_board(actor, id, False) |> serve_html
         ["board", id, "control"] -> handle_board(actor, id, True) |> serve_html
 
@@ -62,6 +65,26 @@ fn status_head(output: String) {
         html.h2([class("ml-8")], [html.text(output)]),
       ]),
     ])
+  }
+}
+
+fn handle_slow(
+actor: actor.Started(
+process.Subject(message.RoomControl(message.ClientsServer)),
+),
+id: String,
+) -> fn() -> element.Element(a) {
+  let start_args = actor.call(actor.data, 1000, message.FetchRoom(id, _))
+  case start_args {
+    option.Some(_) -> fn() {
+      div([], [
+      server_component.element(
+      [server_component.route("/socket/slow/" <> id)],
+      [],
+      ),
+      ])
+    }
+    option.None -> status_head("Could not find that room...")
   }
 }
 

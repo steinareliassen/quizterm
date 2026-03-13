@@ -1,4 +1,4 @@
-import gleam/dynamic/decode
+import components/components
 import gleam/erlang/process.{type Subject}
 import gleam/int
 import gleam/list
@@ -10,7 +10,6 @@ import lustre/attribute.{class}
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html
-import lustre/event
 import lustre/server_component
 import shared/message.{type NotifyClient, type NotifyServer, type User, User}
 
@@ -123,10 +122,12 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
 fn step_prompt(text: String, fetch: fn() -> Element(Msg)) {
   html.div([attribute.class("prompt-line")], [
-    html.span([attribute.class("prompt-text")], [
-      html.text(text),
+    html.div([attribute.class("prompt-text")], [
+      html.div([], [
+        html.text(text),
+      ]),
+      fetch(),
     ]),
-    fetch(),
   ])
 }
 
@@ -137,17 +138,17 @@ fn view(model: Model) -> Element(Msg) {
         AskName ->
           step_prompt(
             "Hello stranger. To join the quiz, I need to know your name",
-            fn() { view_input("$> ", ReceiveName) },
+            fn() { components.view_input(ReceiveName) },
           )
         NameOk(name) ->
           step_prompt(
             "Your name is " <> name <> "? Are you absolutely sure???",
-            fn() { view_yes_no("$>", name, AcceptName) },
+            fn() { components.view_yes_no(name, AcceptName) },
           )
         Answer(name) ->
           step_prompt(
             "The Quiz Lead will now ask the question, and you may answer.",
-            fn() { view_named_input("Answer $>", name, GiveAnswer) },
+            fn() { components.view_named_input(name, GiveAnswer) },
           )
         _ -> html.h3([], [html.text("Waiting for next question")])
       },
@@ -281,64 +282,4 @@ fn content_cell(header: String, ping_time: Int, content: String) -> Element(Msg)
       ]),
     ],
   )
-}
-
-fn view_yes_no(
-  prompt: String,
-  accepted: String,
-  on_submit handle_keydown: fn(Option(String)) -> msg,
-) -> Element(msg) {
-  html.div([], [
-    html.text(prompt),
-    html.button([event.on_click(handle_keydown(Some(accepted)))], [
-      html.text(" <Yes> "),
-    ]),
-    html.text(" - "),
-    html.button([event.on_click(handle_keydown(None))], [html.text(" <No> ")]),
-  ])
-}
-
-fn view_input(
-  text: String,
-  on_submit handle_keydown: fn(String) -> msg,
-) -> Element(msg) {
-  let on_keydown =
-    event.on("keydown", {
-      use key <- decode.field("key", decode.string)
-      use value <- decode.subfield(["target", "value"], decode.string)
-
-      case key {
-        "Enter" if value != "" -> decode.success(handle_keydown(value))
-        _ -> decode.failure(handle_keydown(""), "")
-      }
-    })
-    |> server_component.include(["key", "target.value"])
-
-  html.div([], [
-    html.text(text),
-    html.input([attribute.class("input"), on_keydown, attribute.autofocus(True)]),
-  ])
-}
-
-fn view_named_input(
-  text: String,
-  name: String,
-  on_submit handle_keydown: fn(String, String) -> msg,
-) -> Element(msg) {
-  let on_keydown =
-    event.on("keydown", {
-      use key <- decode.field("key", decode.string)
-      use value <- decode.subfield(["target", "value"], decode.string)
-
-      case key {
-        "Enter" if value != "" -> decode.success(handle_keydown(name, value))
-        _ -> decode.failure(handle_keydown("", ""), "")
-      }
-    })
-    |> server_component.include(["key", "target.value"])
-
-  html.div([], [
-    html.text(text),
-    html.input([attribute.class("input"), on_keydown, attribute.autofocus(True)]),
-  ])
 }
