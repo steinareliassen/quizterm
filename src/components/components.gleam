@@ -18,19 +18,12 @@ pub fn view_named_input(
   name: String,
   on_submit handle_keydown: fn(String, String) -> msg,
 ) -> Element(msg) {
-  let on_keydown =
-    event.on("keydown", {
-      use key <- decode.field("key", decode.string)
-      use value <- decode.subfield(["target", "value"], decode.string)
-
-      case key {
-        "Enter" if value != "" -> decode.success(handle_keydown(name, value))
-        _ -> decode.failure(handle_keydown("", ""), "")
-      }
-    })
-    |> server_component.include(["key", "target.value"])
-
-  prompt_input("nameinput", on_keydown)
+  prompt_input(
+    "nameinput",
+    key_down(fn(a: String) { decode.success(handle_keydown(name, a)) }, fn() {
+      decode.failure(handle_keydown(name, ""), "")
+    }),
+  )
 }
 
 pub fn view_named_keyed_input(
@@ -38,20 +31,22 @@ pub fn view_named_keyed_input(
   name: String,
   on_submit handle_keydown: fn(String, Int, String) -> msg,
 ) -> Element(msg) {
-  let on_keydown =
-    event.on("keydown", {
-      use key <- decode.field("key", decode.string)
-      use value <- decode.subfield(["target", "value"], decode.string)
+  prompt_input(
+    "keyput",
+    key_down(
+      fn(a: String) { decode.success(handle_keydown(name, question, a)) },
+      fn() { decode.failure(handle_keydown(name, question, ""), "") },
+    ),
+  )
+}
 
-      case key {
-        "Enter" if value != "" ->
-          decode.success(handle_keydown(name, question, value))
-        _ -> decode.failure(handle_keydown("", 0, ""), "")
-      }
-    })
-    |> server_component.include(["key", "target.value"])
-
-  prompt_input("keyput", on_keydown)
+pub fn view_input(on_submit handle_keydown: fn(String) -> msg) -> Element(msg) {
+  prompt_input(
+  "input",
+  key_down(fn(a: String) { decode.success(handle_keydown(a)) }, fn() {
+    decode.failure(handle_keydown(""), "")
+  }),
+  )
 }
 
 pub fn view_yes_no(
@@ -67,27 +62,25 @@ pub fn view_yes_no(
   ])
 }
 
-pub fn view_input(
-  on_submit handle_keydown: fn(String) -> msg,
-) -> Element(msg) {
-  let on_keydown =
-    event.on("keydown", {
-      use key <- decode.field("key", decode.string)
-      use value <- decode.subfield(["target", "value"], decode.string)
+fn key_down(
+  success: fn(String) -> decode.Decoder(msg),
+  fail: fn() -> decode.Decoder(msg),
+) {
+  event.on("keydown", {
+    use key <- decode.field("key", decode.string)
+    use value <- decode.subfield(["target", "value"], decode.string)
 
-      case key {
-        "Enter" if value != "" -> decode.success(handle_keydown(value))
-        _ -> decode.failure(handle_keydown(""), "")
-      }
-    })
-    |> server_component.include(["key", "target.value"])
-
-  prompt_input("input", on_keydown)
+    case key {
+      "Enter" if value != "" -> success(value)
+      _ -> fail()
+    }
+  })
+  |> server_component.include(["key", "target.value"])
 }
 
 fn prompt_input(key, on_keydown) {
   keyed.div([], [
-    #(key<>"header", html.text("$>")),
+    #(key <> "header", html.text("$>")),
     #(
       key,
       html.input([
@@ -96,5 +89,16 @@ fn prompt_input(key, on_keydown) {
         attribute.autofocus(True),
       ]),
     ),
+  ])
+}
+
+pub fn step_prompt(text: String, fetch: fn() -> Element(a)) {
+  html.div([attribute.class("prompt-line")], [
+    html.div([attribute.class("prompt-text")], [
+      html.div([], [
+        html.text(text),
+      ]),
+      fetch(),
+    ]),
   ])
 }

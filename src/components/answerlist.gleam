@@ -1,4 +1,4 @@
-import components/components
+import components/components.{step_prompt}
 import gleam/erlang/process.{type Subject}
 import gleam/int
 import gleam/list
@@ -74,15 +74,6 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     }
     ReceiveName(_) -> #(Model(..model, state: msg), effect.none())
   }
-}
-
-fn step_prompt(text: String, fetch: fn() -> Element(Msg)) {
-  html.div([attribute.class("prompt-line")], [
-    html.span([attribute.class("prompt-text")], [
-      html.text(text),
-      fetch(),
-    ]),
-  ])
 }
 
 fn view(model: Model) -> Element(Msg) {

@@ -10,11 +10,15 @@ import shared/message.{
 }
 
 type State {
-  State(name_answers: List(#(String, #(Int, AnswerStatus))), hide_answers: Bool)
+  State(
+    slow_answers: List(#(String, #(Int, String))),
+    name_answers: List(#(String, #(Int, AnswerStatus))),
+    hide_answers: Bool,
+  )
 }
 
 pub fn initialize(registry: GroupRegistry(NotifyClient)) {
-  actor.new(State([], True))
+  actor.new(State([], [], True))
   |> actor.on_message(fn(state: State, message) {
     case message {
       message.PingTime(sender) -> {
@@ -50,7 +54,7 @@ pub fn initialize(registry: GroupRegistry(NotifyClient)) {
       }
       PurgePlayers -> {
         broadcast(registry, message.Exit)
-        State([], True)
+        State([], [], True)
         |> broadcast_lobby(registry)
       }
       GiveName(name) -> {
@@ -61,15 +65,16 @@ pub fn initialize(registry: GroupRegistry(NotifyClient)) {
         }
         // Add the new user to lobby, and broadcast lobby
         State(
-          list.key_set(state.name_answers, name, #(0, NotAnswered)),
-          state.hide_answers,
+          ..state,
+          name_answers: list.key_set(state.name_answers, name, #(0, NotAnswered)),
         )
         |> broadcast_lobby(registry)
       }
       GiveAnswer(name, answer) -> {
         let state =
           State(
-            list.key_set(
+            ..state,
+            name_answers: list.key_set(
               state.name_answers,
               name,
               #(0, case answer {
@@ -78,7 +83,6 @@ pub fn initialize(registry: GroupRegistry(NotifyClient)) {
                 None -> IDontKnow
               }),
             ),
-            state.hide_answers,
           )
         // Check if everyone has answered, if so, reveal answer.
         case
@@ -101,7 +105,8 @@ pub fn initialize(registry: GroupRegistry(NotifyClient)) {
       AnswerQuiz -> {
         broadcast(registry, Answer)
         State(
-          list.map(state.name_answers, fn(user) {
+          ..state,
+          name_answers: list.map(state.name_answers, fn(user) {
             let #(name, #(count, _)) = user
             #(name, #(count, NotAnswered))
           }),
@@ -111,7 +116,7 @@ pub fn initialize(registry: GroupRegistry(NotifyClient)) {
       }
       RevealAnswer -> {
         broadcast(registry, Await)
-        State(state.name_answers, hide_answers: False)
+        State(..state, hide_answers: False)
         |> broadcast_lobby(registry)
       }
     }
