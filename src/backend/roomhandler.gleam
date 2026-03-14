@@ -10,52 +10,71 @@ import shared/message.{type ClientsServer, type RoomControl}
 //
 // Reacts to:
 // CreateRoom(id) - create room with given ID.
-// Todo: better handling of "room already exists"
 //
 // Responds to:
 // FetchRoom(id, <subject>) - Fetch room with the given id.
 
 type Room {
-  Room(rooms: List(#(String, ClientsServer)))
+  Room(questions: List(#(Int, String)), rooms: List(#(String, ClientsServer)))
 }
 
 pub fn initialize() {
-  actor.new(Room([]))
+  actor.new(Room([], []))
   |> actor.on_message(fn(state: Room, message: RoomControl(ClientsServer)) {
     case message {
       message.CreateRoom(id:) -> {
-        case // Does room already exist?
-          list.find(state.rooms, fn(a) {
-            case a {
-              #(a, _) -> id == a
-            }
-          })
+        case
+          // Does room already exist?
+          state.rooms |> list.key_find(id)
         {
           Error(_) -> {
-            // Room not found (not really an error case), create it.
-            let name = process.new_name("quiz-registry" <> id)
-            let assert Ok(actor.Started(data: registry, ..)) =
-              group_registry.start(name)
-            let assert Ok(actor) = statehandler.initialize(registry)
-            process.send_after(actor.data, 1000, message.PingTime(actor.data))
-            Room(rooms: [#(id, #(registry, actor)), ..state.rooms])
+            // Prevent overflowing server with rooms, set max 200
+            case list.length(state.rooms) > 200 {
+              True -> {
+                // Room not found (not really an error case), create it.
+                let name = process.new_name("quiz-registry" <> id)
+                let assert Ok(actor.Started(data: registry, ..)) =
+                  group_registry.start(name)
+                let assert Ok(actor) = statehandler.initialize(registry)
+                process.send_after(
+                  actor.data,
+                  1000,
+                  message.PingTime(actor.data),
+                )
+                Room(..state, rooms: [#(id, #(registry, actor)), ..state.rooms])
+              }
+              False -> state
+            }
           }
-          Ok(_) -> state // Room already exist, do nothing (for now...)
+          Ok(_) -> state
+          // Room exists, do nothing.
         }
       }
       message.FetchRoom(id:, subject:) -> {
-        case // Find the room, if it exists
-          list.find(state.rooms, fn(a) {
-            case a {
-              #(a, _) -> id == a
-            }
-          })
+        case
+          // Find the room, if it exists
+          state.rooms |> list.key_find(id)
         {
-          Ok(#(_, room)) -> actor.send(subject, Some(room))
+          Ok(room) -> actor.send(subject, Some(room))
           Error(_) -> actor.send(subject, option.None)
         }
         state
       }
+      message.SetQuestion(id:, question:) if id >= 0 && id <= 14 -> {
+        Room(..state, questions: list.key_set(state.questions, id, question))
+      }
+      message.FetchQuestion(id:, subject:) -> {
+        case
+          // Find the room, if it exists
+          list.key_find(state.questions, id)
+        {
+          Ok(question) -> actor.send(subject, Some(question))
+          Error(_) -> actor.send(subject, option.None)
+        }
+        state
+      }
+      // Ignore requests for questions not between 1 and 14.
+      _ -> state
     }
     |> actor.continue()
   })

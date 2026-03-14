@@ -1,14 +1,13 @@
 import backend/roomhandler
 import backend/sockethandler
-import components/card
 import components/answerlist
+import components/card
 import components/control
 import gleam/bytes_tree
 import gleam/erlang/application
 import gleam/erlang/process
 import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
-import gleam/io
 import gleam/option.{None}
 import gleam/otp/actor
 import gleam/result
@@ -20,9 +19,8 @@ import mist.{type Connection, type ResponseData}
 import shared/message
 
 pub fn main() {
-  echo "Starting"
-  io.println("Starting 1234")
   let assert Ok(actor) = roomhandler.initialize()
+
   let assert Ok(_) =
     fn(request: Request(Connection)) -> Response(ResponseData) {
       case request.path_segments(request) {
@@ -69,19 +67,19 @@ fn status_head(output: String) {
 }
 
 fn handle_slow(
-actor: actor.Started(
-process.Subject(message.RoomControl(message.ClientsServer)),
-),
-id: String,
+  actor: actor.Started(
+    process.Subject(message.RoomControl(message.ClientsServer)),
+  ),
+  id: String,
 ) -> fn() -> element.Element(a) {
   let start_args = actor.call(actor.data, 1000, message.FetchRoom(id, _))
   case start_args {
     option.Some(_) -> fn() {
       div([], [
-      server_component.element(
-      [server_component.route("/socket/slow/" <> id)],
-      [],
-      ),
+        server_component.element(
+          [server_component.route("/socket/slow/" <> id)],
+          [],
+        ),
       ])
     }
     option.None -> status_head("Could not find that room...")
