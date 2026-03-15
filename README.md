@@ -12,7 +12,7 @@ There are two endpoints to use:
 | / |endpoint for "regular" players.
 | /control | endpoint for person controlling the quiz. Same interface as for regular players, but with possiblity to control when to reveal answers and when to move on to next question. This gives the possiblity for the person asking the question to also provide answers, but the controls will work even if there is no player joined from this page.
 
-![Screenshot of the game](screenshot.png)
+![Screenshot of the game](game1.png)
 
 ### Building and running
 
