@@ -29,7 +29,7 @@ pub fn initialize() {
         {
           Error(_) -> {
             // Prevent overflowing server with rooms, set max 200
-            case list.length(state.rooms) > 200 {
+            case list.length(state.rooms) < 200 {
               True -> {
                 // Room not found (not really an error case), create it.
                 let name = process.new_name("quiz-registry" <> id)

@@ -6,45 +6,31 @@ import components/control
 import gleam/bytes_tree
 import gleam/erlang/application
 import gleam/erlang/process
-import gleam/http/request.{type Request}
+import gleam/http/request
 import gleam/http/response.{type Response}
 import gleam/option.{None}
-import gleam/otp/actor
 import gleam/result
-import lustre/attribute.{class}
-import lustre/element
-import lustre/element/html.{body, div, head, html, link, meta, script, title}
-import lustre/server_component
-import mist.{type Connection, type ResponseData}
-import shared/message
+import mist.{type ResponseData}
+import router
+import wisp/wisp_mist
 
 pub fn main() {
   let assert Ok(actor) = roomhandler.initialize()
 
   let assert Ok(_) =
-    fn(request: Request(Connection)) -> Response(ResponseData) {
-      case request.path_segments(request) {
-        [] -> status_head("Nothing to see here") |> serve_html
+    fn(req) {
+      case request.path_segments(req) {
         ["lustre", "runtime.mjs"] -> serve_runtime()
         ["static", file] -> serve_static(file)
-
         ["socket", "card", id] -> {
-          sockethandler.serve(request, card.component(), id, actor)
+          sockethandler.serve(req, card.component(), id, actor)
         }
         ["socket", "control", id] ->
-          sockethandler.serve(request, control.component(), id, actor)
+          sockethandler.serve(req, control.component(), id, actor)
         ["socket", "slow", id] ->
-          sockethandler.serve(request, answerlist.component(), id, actor)
-        ["board", id, "slow"] -> handle_slow(actor, id) |> serve_html
-        ["board", id] -> handle_board(actor, id, False) |> serve_html
-        ["board", id, "control"] -> handle_board(actor, id, True) |> serve_html
-
-        ["room", id] -> {
-          process.send(actor.data, message.CreateRoom(id))
-          status_head("Created room with id " <> id)
-          |> serve_html()
-        }
-        _ -> response.set_body(response.new(404), mist.Bytes(bytes_tree.new()))
+          sockethandler.serve(req, answerlist.component(), id, actor)
+        _ ->
+          wisp_mist.handler(router.handle_request(actor, _), "very_secret")(req)
       }
     }
     |> mist.new
@@ -53,117 +39,6 @@ pub fn main() {
     |> mist.start
 
   process.sleep_forever()
-}
-
-fn status_head(output: String) {
-  fn() -> element.Element(a) {
-    html.div([class("terminal-header")], [
-      html.div([class("terminal-status")], [
-        html.span([class("status-blink")], [html.text("●")]),
-        html.h2([class("ml-8")], [html.text(output)]),
-      ]),
-    ])
-  }
-}
-
-fn handle_slow(
-  actor: actor.Started(
-    process.Subject(message.RoomControl(message.ClientsServer)),
-  ),
-  id: String,
-) -> fn() -> element.Element(a) {
-  let start_args = actor.call(actor.data, 1000, message.FetchRoom(id, _))
-  case start_args {
-    option.Some(_) -> fn() {
-      div([], [
-        server_component.element(
-          [server_component.route("/socket/slow/" <> id)],
-          [],
-        ),
-      ])
-    }
-    option.None -> status_head("Could not find that room...")
-  }
-}
-
-fn handle_board(
-  actor: actor.Started(
-    process.Subject(message.RoomControl(message.ClientsServer)),
-  ),
-  id: String,
-  control: Bool,
-) -> fn() -> element.Element(a) {
-  let start_args = actor.call(actor.data, 1000, message.FetchRoom(id, _))
-  case start_args {
-    option.Some(_) -> fn() {
-      div([], [
-        server_component.element(
-          [server_component.route("/socket/card/" <> id)],
-          [],
-        ),
-        case control {
-          True ->
-            server_component.element(
-              [server_component.route("/socket/control/" <> id)],
-              [],
-            )
-          False -> element.none()
-        },
-      ])
-    }
-    option.None -> status_head("Could not find that room...")
-  }
-}
-
-fn serve_html(content: fn() -> element.Element(a)) -> Response(ResponseData) {
-  let html =
-    html([], [
-      head([], [
-        meta([attribute.charset("utf-8")]),
-        meta([
-          attribute.name("viewport"),
-          attribute.content("width=device-width, initial-scale=1.0"),
-        ]),
-        title([], "QUIZTERMINAL v1.0"),
-        script(
-          [attribute.type_("module"), attribute.src("/lustre/runtime.mjs")],
-          "",
-        ),
-        link([
-          attribute.rel("stylesheet"),
-          attribute.type_("text/css"),
-          attribute.href("/static/layout.css"),
-        ]),
-      ]),
-      body([], [
-        div([class("terminal-screen")], [
-          div([class("terminal-glow")], [
-            div([class("scanlines")], []),
-
-            // title
-            div([class("terminal-header")], [
-              html.pre([class("terminal-title")], [
-                html.text(
-                  "
-╔═══════════════════════════════════════╗
-║       Q U I Z T E R M I N A L         ║
-╚═══════════════════════════════════════╝
-",
-                ),
-              ]),
-            ]),
-            // Insert content
-            content(),
-          ]),
-        ]),
-      ]),
-    ])
-    |> element.to_document_string_tree
-    |> bytes_tree.from_string_tree
-
-  response.new(200)
-  |> response.set_body(mist.Bytes(html))
-  |> response.set_header("content-type", "text/html")
 }
 
 fn serve_static(filename: String) {

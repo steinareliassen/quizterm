@@ -30,7 +30,6 @@ pub fn serve(
       |> response.set_body(
         bytes_tree.from_string("Requested resource not found") |> mist.Bytes,
       )
-      |> response.set_header("content-type", "text/html")
   }
 }
 
