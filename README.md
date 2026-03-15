@@ -8,7 +8,7 @@ was, will show up on everyones screen.
 
 Not quite finished yet, it is at a point where it is "usable" enough.
 
-There are two endpoints to use:
+Endpoints explained
 
 | Endpoint                 | Usage                                                        |
 |--------------------------|--------------------------------------------------------------|
@@ -24,7 +24,8 @@ There are two endpoints to use:
 ### Building and running
 
 Docker, or a compatible container manager, like podman, is required to build and run
-quizterm. 
+quizterm. The alternative is to install Gleam and Erlang/BEAM and run it dockerless.
+Unless you plan to do Gleam development, using Docker will save a lot of hassle.
 
 To compile project and build docker image, write:
 ```

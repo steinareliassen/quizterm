@@ -121,6 +121,13 @@ body {
     transition: all 0.2s;
 }
 
+.participant-hidden {
+    border: 0px dashed #005500;
+    padding: 1rem;
+    color: #000000;
+    transition: all 0.2s;
+}
+
 .participant-disconnect {
     border: 1px dashed #005500;
     padding: 1rem;

@@ -16,11 +16,7 @@ import shared/message.{
   type NotifyClient, type NotifyServer, AnswerQuiz, RevealAnswer,
 }
 
-pub fn component() -> lustre.App(
-  #(GroupRegistry(NotifyClient), Started(Subject(NotifyServer))),
-  Model,
-  Msg,
-) {
+pub fn component() -> lustre.App(message.ClientsServer, Model, Msg) {
   lustre.application(init, update, view)
 }
 
@@ -45,9 +41,7 @@ pub opaque type Msg {
   SharedMessage(message: message.NotifyClient)
 }
 
-fn init(
-  handlers: #(GroupRegistry(NotifyClient), Started(Subject(NotifyServer))),
-) -> #(Model, Effect(Msg)) {
+fn init(handlers: message.ClientsServer) -> #(Model, Effect(Msg)) {
   let #(registry, handler) = handlers
 
   let model = Model(state: Quiz, registry:, handler:)
@@ -95,30 +89,31 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 }
 
 fn view(model: Model) -> Element(Msg) {
-  element.fragment([
-    case model.state {
-      Quiz -> {
-        keyed.div([attribute.class("control")], [
-          #("reveal", view_button("Reveal answers", AnnounceAnswer)),
-        ])
-      }
-      Reveal -> {
-        keyed.div([attribute.class("control")], [
-          #("next", view_button("Ask for next answer", AnnounceQuiz)),
-        ])
-      }
-    },
-    keyed.div([attribute.class("control")], [
-      #(
-        "p",
-        html.p([], [
-          html.p([], [html.text(" ")]),
-          html.p([], [html.text(" ")]),
-          html.p([], [html.text(" ")]),
-          html.p([], [html.text("Danger zone!")]),
+  html.div([attribute.class("terminal-section")], [
+    html.div([attribute.class("participants-grid")], [
+      element.fragment([
+        keyed.div([attribute.class("participand-hidden")], [
+          #("reveal", html.text("")),
         ]),
-      ),
-      #("stuff", view_button("!!! Purge players !!!", PurgePlayers)),
+        keyed.div([attribute.class("participand-hidden")], [
+          #("reveal", html.text("")),
+        ]),
+        keyed.div([attribute.class("control")], [
+          #("reveal", html.text("")),
+        ]),
+        case model.state {
+          Quiz -> {
+            keyed.div([attribute.class("control")], [
+              #("reveal", view_button("Reveal answers", AnnounceAnswer)),
+            ])
+          }
+          Reveal -> {
+            keyed.div([attribute.class("control")], [
+              #("next", view_button("Ask for next answer", AnnounceQuiz)),
+            ])
+          }
+        },
+      ]),
     ]),
   ])
 }

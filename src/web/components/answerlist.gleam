@@ -15,7 +15,7 @@ import web/components/shared.{
 }
 
 pub fn component() -> lustre.App(
-  #(GroupRegistry(NotifyClient), Started(Subject(NotifyServer))),
+  message.ClientsServer,
   Model,
   Msg,
 ) {
@@ -31,7 +31,7 @@ pub opaque type Model {
 }
 
 fn init(
-  handlers: #(GroupRegistry(NotifyClient), Started(Subject(NotifyServer))),
+  handlers: message.ClientsServer
 ) -> #(Model, Effect(Msg)) {
   let #(_, handler) = handlers
   update(Model(Initial, [], handler), Initial)

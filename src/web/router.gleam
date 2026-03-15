@@ -11,8 +11,7 @@ pub fn handle_request(
   use req <- middleware(req)
   case wisp.path_segments(req) {
     ["board", id, "slow"] -> slow(actor, id)
-    ["board", id] -> board(actor, id, False)
-    ["board", id, "control"] -> board(actor, id, True)
+    ["board", id] -> board(actor, id)
     ["room", id] -> room(actor, id)
     _ -> status_head("Nothing to see here")
   }

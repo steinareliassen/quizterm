@@ -1,4 +1,4 @@
-import web/components/shared.{step_prompt,view_input,view_named_input,view_yes_no}
+import gleam/dynamic/decode
 import gleam/erlang/process.{type Subject}
 import gleam/int
 import gleam/list
@@ -10,14 +10,15 @@ import lustre/attribute.{class}
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html
+import lustre/element/keyed
+import lustre/event
 import lustre/server_component
 import shared/message.{type NotifyClient, type NotifyServer, type User, User}
+import web/components/shared.{
+  step_prompt, view_input, view_named_input, view_yes_no,
+}
 
-pub fn component() -> lustre.App(
-  #(GroupRegistry(NotifyClient), Started(Subject(NotifyServer))),
-  Model,
-  Msg,
-) {
+pub fn component() -> lustre.App(message.ClientsServer, Model, Msg) {
   lustre.application(init, update, view)
 }
 
@@ -37,9 +38,7 @@ pub opaque type Model {
   )
 }
 
-fn init(
-  handlers: #(GroupRegistry(NotifyClient), Started(Subject(NotifyServer))),
-) -> #(Model, Effect(Msg)) {
+fn init(handlers: message.ClientsServer) -> #(Model, Effect(Msg)) {
   let #(registry, handler) = handlers
 
   let model = Model(AskName, [], registry, handler)
@@ -156,6 +155,7 @@ fn view(model: Model) -> Element(Msg) {
         ]),
       ]),
     ]),
+
     html.div([class("terminal-section")], case model.lobby {
       [] -> []
       lobby -> {
@@ -271,4 +271,12 @@ fn content_cell(header: String, ping_time: Int, content: String) -> Element(Msg)
       ]),
     ],
   )
+}
+
+fn view_button(text: String, on_submit handle_keydown: msg) -> Element(msg) {
+  let on_keydown = event.on("click", { decode.success(handle_keydown) })
+
+  html.button([attribute.class("controlbutton"), on_keydown], [
+    html.text(text),
+  ])
 }

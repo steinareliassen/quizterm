@@ -84,7 +84,6 @@ pub fn slow(
 pub fn board(
   actor: Started(Subject(RoomControl(ClientsServer))),
   id: String,
-  control: Bool,
 ) -> fn() -> element.Element(a) {
   let start_args = actor.call(actor.data, 1000, FetchRoom(id, _))
   case start_args {
@@ -94,14 +93,10 @@ pub fn board(
           [server_component.route("/socket/card/" <> id)],
           [],
         ),
-        case control {
-          True ->
-            server_component.element(
-              [server_component.route("/socket/control/" <> id)],
-              [],
-            )
-          False -> element.none()
-        },
+        server_component.element(
+          [server_component.route("/socket/control/" <> id)],
+          [],
+        ),
       ])
     }
     None -> status_head("Could not find that room...")
