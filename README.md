@@ -20,16 +20,16 @@ Docker, or a compatible container manager, like podman, is required to build and
 quizterm. 
 
 To compile project and build docker image, write:
-'''
+```
 docker build . -t quizterm:1
-'''
+```
 quizterm can be whatever name you want to give the container, 1 can be 
 changed to whatever you want the version of the container to be.
 
 Start server on port 4321:
-'''
+```
 docker run -p 4321:1234 quizterm:1
-'''
+```
 
 Port 1234 is the port used internally in the docker container, while 4321
 is the port exposed outside the container. The latter can be set to whatever
