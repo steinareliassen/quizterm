@@ -1,4 +1,3 @@
-import components/components.{step_prompt}
 import gleam/erlang/process.{type Subject}
 import gleam/int
 import gleam/list
@@ -11,6 +10,9 @@ import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html
 import shared/message.{type NotifyClient, type NotifyServer}
+import web/components/shared.{
+  step_prompt, view_input, view_named_input, view_named_keyed_input, view_yes_no,
+}
 
 pub fn component() -> lustre.App(
   #(GroupRegistry(NotifyClient), Started(Subject(NotifyServer))),
@@ -83,29 +85,23 @@ fn view(model: Model) -> Element(Msg) {
         Initial ->
           step_prompt(
             "Hello stranger. To join the quiz, I need to know your name",
-            fn() { components.view_input(ReceiveName) },
+            fn() { view_input(ReceiveName) },
           )
         ReceiveName(name) ->
           step_prompt(
             "Your name is " <> name <> "? Are you absolutely sure???",
-            fn() { components.view_yes_no(name, AcceptName) },
+            fn() { view_yes_no(name, AcceptName) },
           )
         GiveQuestion(name, _) ->
           step_prompt(
             "Enter the number of the question you want to answer",
-            fn() {
-              components.view_named_input(name, GiveQuestion)
-            },
+            fn() { view_named_input(name, GiveQuestion) },
           )
         GiveAnswer(name, question, _) ->
           step_prompt(
-            "Enter the answer to question number "<> int.to_string(question),
+            "Enter the answer to question number " <> int.to_string(question),
             fn() {
-              components.view_named_keyed_input(
-                question,
-                name,
-                GiveAnswer,
-              )
+              view_named_keyed_input(question, name, GiveAnswer)
             },
           )
         _ -> html.h3([], [html.text("Waiting for next question")])

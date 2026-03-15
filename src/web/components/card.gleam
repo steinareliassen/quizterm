@@ -1,4 +1,4 @@
-import components/components.{step_prompt}
+import web/components/shared.{step_prompt,view_input,view_named_input,view_yes_no}
 import gleam/erlang/process.{type Subject}
 import gleam/int
 import gleam/list
@@ -127,17 +127,17 @@ fn view(model: Model) -> Element(Msg) {
         AskName ->
           step_prompt(
             "Hello stranger. To join the quiz, I need to know your name",
-            fn() { components.view_input(ReceiveName) },
+            fn() { view_input(ReceiveName) },
           )
         NameOk(name) ->
           step_prompt(
             "Your name is " <> name <> "? Are you absolutely sure???",
-            fn() { components.view_yes_no(name, AcceptName) },
+            fn() { view_yes_no(name, AcceptName) },
           )
         Answer(name) ->
           step_prompt(
             "The Quiz Lead will now ask the question, and you may answer.",
-            fn() { components.view_named_input(name, GiveAnswer) },
+            fn() { view_named_input(name, GiveAnswer) },
           )
         _ -> html.h3([], [html.text("Waiting for next question")])
       },

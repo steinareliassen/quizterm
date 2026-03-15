@@ -1,8 +1,5 @@
 import backend/roomhandler
 import backend/sockethandler
-import components/answerlist
-import components/card
-import components/control
 import gleam/bytes_tree
 import gleam/erlang/application
 import gleam/erlang/process
@@ -11,7 +8,10 @@ import gleam/http/response.{type Response}
 import gleam/option.{None}
 import gleam/result
 import mist.{type ResponseData}
-import router
+import web/components/answerlist
+import web/components/card
+import web/components/control
+import web/router
 import wisp/wisp_mist
 
 pub fn main() {
