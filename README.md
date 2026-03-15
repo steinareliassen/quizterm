@@ -9,10 +9,17 @@ was, will show up on everyones screen.
 Not quite finished yet, it is at a point where it is "usable" enough.
 
 There are two endpoints to use:
-| / |endpoint for "regular" players.
-| /control | endpoint for person controlling the quiz. Same interface as for regular players, but with possiblity to control when to reveal answers and when to move on to next question. This gives the possiblity for the person asking the question to also provide answers, but the controls will work even if there is no player joined from this page.
 
-![Screenshot of the game](game1.png)
+| Endpoint                 | Usage                                                        |
+|--------------------------|--------------------------------------------------------------|
+| /room/<room_id>          | Create room with given room_id (max 200 rooms)               |
+| /board/<room_id>         | Join a game with the given room_id                           |
+| /board/<room_id>/control | Join a game with the given room_id with more control options |
+
+
+| Ingame example           | Idle player example      |
+|--------------------------|--------------------------|
+| ![Screenshot](game1.png) | ![Screenshot](game2.png) |
 
 ### Building and running
 
