@@ -1,4 +1,5 @@
 import gleam/erlang/process.{type Subject}
+import gleam/json
 import gleam/option.{None, Some}
 import gleam/otp/actor.{type Started}
 import lustre/attribute.{class}
@@ -11,51 +12,49 @@ import shared/message.{
 import wisp.{type Response}
 
 pub fn main_html(content: fn() -> element.Element(a)) -> Response {
-  let html =
-    html([], [
-      head([], [
-        meta([attribute.charset("utf-8")]),
-        meta([
-          attribute.name("viewport"),
-          attribute.content("width=device-width, initial-scale=1.0"),
-        ]),
-        title([], "QUIZTERMINAL v1.0"),
-        script(
-          [attribute.type_("module"), attribute.src("/lustre/runtime.mjs")],
-          "",
-        ),
-        link([
-          attribute.rel("stylesheet"),
-          attribute.type_("text/css"),
-          attribute.href("/static/layout.css"),
-        ]),
+  html([], [
+    head([], [
+      meta([attribute.charset("utf-8")]),
+      meta([
+        attribute.name("viewport"),
+        attribute.content("width=device-width, initial-scale=1.0"),
       ]),
-      body([], [
-        div([class("terminal-screen")], [
-          div([class("terminal-glow")], [
-            div([class("scanlines")], []),
+      title([], "QUIZTERMINAL v1.0"),
+      script(
+        [attribute.type_("module"), attribute.src("/lustre/runtime.mjs")],
+        "",
+      ),
+      link([
+        attribute.rel("stylesheet"),
+        attribute.type_("text/css"),
+        attribute.href("/static/layout.css"),
+      ]),
+    ]),
+    body([], [
+      div([class("terminal-screen")], [
+        div([class("terminal-glow")], [
+          div([class("scanlines")], []),
 
-            // title
-            div([class("terminal-header")], [
-              html.pre([class("terminal-title")], [
-                html.text(
-                  "
+          // title
+          div([class("terminal-header")], [
+            html.pre([class("terminal-title")], [
+              html.text(
+                "
 ╔═══════════════════════════════════════╗
 ║       Q U I Z T E R M I N A L         ║
 ╚═══════════════════════════════════════╝
 ",
-                ),
-              ]),
+              ),
             ]),
-            // Insert content
-            content(),
           ]),
+          // Insert content
+          content(),
         ]),
       ]),
-    ])
-    |> element.to_document_string
-
-  wisp.html_response(html, 200)
+    ]),
+  ])
+  |> element.to_document_string
+  |> wisp.html_response(200)
 }
 
 pub fn room(actor: Started(Subject(RoomControl(ClientsServer))), id: String) {
@@ -101,6 +100,11 @@ pub fn board(
     }
     None -> status_head("Could not find that room...")
   }
+}
+
+pub fn create_json_response(output: String) {
+  json.object([#("response", json.string(output))])
+  |> json.to_string |> wisp.json_response(200)
 }
 
 pub fn status_head(output: String) {

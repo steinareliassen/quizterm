@@ -3,7 +3,6 @@ import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/otp/actor.{type Started}
-import group_registry.{type GroupRegistry}
 import lustre
 import lustre/attribute.{class}
 import lustre/effect.{type Effect}

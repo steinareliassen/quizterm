@@ -17,7 +17,7 @@ Endpoints explained
 | /board/<room_id>/control | Join a game with the given room_id with more control options |
 
 
-| Ingame example           | Idle player example      |
+| Ingame example           | Idle player              |
 |--------------------------|--------------------------|
 | ![Screenshot](game1.png) | ![Screenshot](game2.png) |
 
