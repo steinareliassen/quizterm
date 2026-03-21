@@ -4,19 +4,17 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/otp/actor.{type Started}
 import lustre
-import group_registry.{type GroupRegistry}
 import lustre/attribute.{class}
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html
-import lustre/server_component
 import shared/message.{type NotifyClient, type NotifyServer}
 import web/components/shared.{
   step_prompt, view_input, view_named_input, view_named_keyed_input, view_yes_no,
 }
 
 pub fn component() -> lustre.App(
-  #(List(#(Int, String)),message.ClientsServer),
+  #(List(#(Int, String)), message.ClientsServer),
   Model,
   Msg,
 ) {
@@ -26,33 +24,31 @@ pub fn component() -> lustre.App(
 pub opaque type Model {
   Model(
     state: Msg,
-    answers: List(#(Int, String)),
+    answers: List(#(Int, #(String, String))),
     handler: Started(Subject(NotifyServer)),
   )
 }
 
 fn init(
-  start_args: #(List(#(Int, String)),message.ClientsServer)
+  start_args: #(List(#(Int, String)), message.ClientsServer),
 ) -> #(Model, Effect(Msg)) {
   let #(answers, handlers) = start_args
-  let #(registry, handler) = handlers
+  let #(_registry, handler) = handlers
 
-  #(Model(Initial, answers, handler), subscribe(registry, SharedMessage))
-}
+  // Convert a "question number -> question text" array to
+  // "question number" -> #("question text", "users answer" array
+  // with blank user answers.
+  let initial_array =
+  list.filter(answers, fn(x) {
+      let #(i, _) = x
+      i <= 14 && i >= 0
+    })
+    |> list.map(fn(x) {
+      let #(a, b) = x
+      #(a, #(b, ""))
+    })
 
-
-fn subscribe(
-registry: GroupRegistry(topic),
-on_msg handle_msg: fn(topic) -> msg,
-) -> Effect(msg) {
-  use _, _ <- server_component.select
-  let subject = group_registry.join(registry, "quiz", process.self())
-
-  let selector =
-  process.new_selector()
-  |> process.select_map(subject, handle_msg)
-
-  selector
+  #(Model(Initial, initial_array, handler), effect.none())
 }
 
 pub opaque type Msg {
@@ -83,11 +79,18 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         )
       }
     GiveAnswer(name, question, answer) -> {
+      let new_value = case list.key_find(model.answers, question) {
+        Ok(pair) -> {
+          let #(a,_) = pair
+          #(a,answer)
+        }
+        Error(_) -> #("",answer)
+      }
       #(
         Model(
           ..model,
           state: GiveQuestion(name, ""),
-          answers: list.key_set(model.answers, question, answer),
+          answers: list.key_set(model.answers, question, new_value),
         ),
         effect.none(),
       )
@@ -118,9 +121,7 @@ fn view(model: Model) -> Element(Msg) {
         GiveAnswer(name, question, _) ->
           step_prompt(
             "Enter the answer to question number " <> int.to_string(question),
-            fn() {
-              view_named_keyed_input(question, name, GiveAnswer)
-            },
+            fn() { view_named_keyed_input(question, name, GiveAnswer) },
           )
         _ -> html.h3([], [html.text("Waiting for next question")])
       },
@@ -147,9 +148,9 @@ fn view(model: Model) -> Element(Msg) {
 }
 
 fn terminal_section(
-  answers: List(#(Int, String)),
+  answers: List(#(Int, #(String, String))),
   header: String,
-  extract: fn(#(Int, String)) -> Element(Msg),
+  extract: fn(#(Int, #(String, String))) -> Element(Msg),
 ) {
   html.div([attribute.class("terminal-section")], [
     html.div([attribute.class("terminal-label mb-4")], [
@@ -159,15 +160,15 @@ fn terminal_section(
   ])
 }
 
-fn content_cell(answer: #(Int, String)) -> Element(Msg) {
-  let #(question, answer) = answer
+fn content_cell(answer: #(Int, #(String,String))) -> Element(Msg) {
+  let #(question, #(question_text,  answer)) = answer
   html.div(
     [
       class("participant-box"),
     ],
     [
       html.div([class("participant-name")], [
-        html.text("► " <> int.to_string(question)),
+        html.text("► " <> int.to_string(question) <> " "<> question_text),
       ]),
       html.div([class("participant-answer")], [
         html.text(answer),
