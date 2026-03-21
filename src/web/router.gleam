@@ -24,7 +24,7 @@ fn handle_html(
   req: Request,
 ) -> Response {
   case wisp.path_segments(req) {
-    ["board", id, "slow"] -> slow(actor, id)
+    ["slow", id] -> slow(actor, id)
     ["board", id] -> board(actor, id)
     ["room", id] -> room(actor, id)
     _ -> status_head("Nothing to see here")
@@ -73,7 +73,7 @@ fn decode_answers(
       })
       "imported "<> int.to_string(list.length(answers)) <> " items."
     }
-    Error(error) -> "error parsing json, failed to import answers."
+    Error(_) -> "error parsing json, failed to import answers."
   }
 }
 

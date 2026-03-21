@@ -4,17 +4,19 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/otp/actor.{type Started}
 import lustre
+import group_registry.{type GroupRegistry}
 import lustre/attribute.{class}
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html
+import lustre/server_component
 import shared/message.{type NotifyClient, type NotifyServer}
 import web/components/shared.{
   step_prompt, view_input, view_named_input, view_named_keyed_input, view_yes_no,
 }
 
 pub fn component() -> lustre.App(
-  message.ClientsServer,
+  #(List(#(Int, String)),message.ClientsServer),
   Model,
   Msg,
 ) {
@@ -30,10 +32,27 @@ pub opaque type Model {
 }
 
 fn init(
-  handlers: message.ClientsServer
+  start_args: #(List(#(Int, String)),message.ClientsServer)
 ) -> #(Model, Effect(Msg)) {
-  let #(_, handler) = handlers
-  update(Model(Initial, [], handler), Initial)
+  let #(answers, handlers) = start_args
+  let #(registry, handler) = handlers
+
+  #(Model(Initial, answers, handler), subscribe(registry, SharedMessage))
+}
+
+
+fn subscribe(
+registry: GroupRegistry(topic),
+on_msg handle_msg: fn(topic) -> msg,
+) -> Effect(msg) {
+  use _, _ <- server_component.select
+  let subject = group_registry.join(registry, "quiz", process.self())
+
+  let selector =
+  process.new_selector()
+  |> process.select_map(subject, handle_msg)
+
+  selector
 }
 
 pub opaque type Msg {

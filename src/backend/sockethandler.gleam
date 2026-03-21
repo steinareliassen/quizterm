@@ -33,6 +33,35 @@ pub fn serve(
   }
 }
 
+pub fn serve_slow(
+  request: Request(Connection),
+  component: lustre.App(
+    #(List(#(Int, String)), start_args),
+    model,
+    msg,
+  ),
+  id: String,
+  roomhandler: actor.Started(Subject(message.RoomControl(start_args))),
+) -> Response(ResponseData) {
+  let start_args_opt = actor.call(roomhandler.data, 1000, message.FetchRoom(id, _))
+  let answer_list = actor.call(roomhandler.data, 1000, message.FetchQuestions(_))
+  echo answer_list
+  case start_args_opt {
+    Some(start_args) ->
+      mist.websocket(
+        request:,
+        on_init: init_socket(_, component, #(answer_list,start_args)),
+        handler: loop_socket,
+        on_close: close_socket,
+      )
+    None ->
+      response.new(404)
+      |> response.set_body(
+        bytes_tree.from_string("Requested resource not found") |> mist.Bytes,
+      )
+  }
+}
+
 type Socket(msg) {
   Socket(
     component: lustre.Runtime(msg),

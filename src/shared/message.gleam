@@ -21,6 +21,7 @@ pub type RoomControl(msg) {
   FetchRoom(id: String, subject: Subject(Option(msg)))
   SetQuestion(id: Int, question: String)
   FetchQuestion(id: Int, subject: Subject(Option(String)))
+  FetchQuestions(subject: Subject(List(#(Int, String))))
 }
 
 pub type AnswerStatus {

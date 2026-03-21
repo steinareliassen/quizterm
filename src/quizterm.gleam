@@ -28,7 +28,7 @@ pub fn main() {
         ["socket", "control", id] ->
           sockethandler.serve(req, control.component(), id, actor)
         ["socket", "slow", id] ->
-          sockethandler.serve(req, answerlist.component(), id, actor)
+          sockethandler.serve_slow(req, answerlist.component(), id, actor)
         _ ->
           wisp_mist.handler(router.handle_request(actor, _), "very_secret")(req)
       }

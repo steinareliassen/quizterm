@@ -63,6 +63,8 @@ pub fn initialize() {
       message.SetQuestion(id:, question:) if id >= 0 && id <= 14 -> {
         Room(..state, questions: list.key_set(state.questions, id, question))
       }
+      // Ignore requests for questions not between 1 and 14.
+      message.SetQuestion(_, _) -> state
       message.FetchQuestion(id:, subject:) -> {
         case
           // Find the room, if it exists
@@ -73,8 +75,10 @@ pub fn initialize() {
         }
         state
       }
-      // Ignore requests for questions not between 1 and 14.
-      _ -> state
+      message.FetchQuestions(subject) -> {
+        actor.send(subject, state.questions)
+        state
+      }
     }
     |> actor.continue()
   })
