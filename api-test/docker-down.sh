@@ -1,0 +1,2 @@
+docker stop do_integration_test
+docker rm do_integration_test
