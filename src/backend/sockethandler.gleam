@@ -42,9 +42,10 @@ pub fn serve_slow(
   ),
   id: String,
   roomhandler: actor.Started(Subject(message.RoomControl(start_args))),
+  statehandler: actor.Started(Subject(message.StateControl)),
 ) -> Response(ResponseData) {
   let start_args_opt = actor.call(roomhandler.data, 1000, message.FetchRoom(id, _))
-  let answer_list = actor.call(roomhandler.data, 1000, message.FetchQuestions(_))
+  let answer_list = actor.call(statehandler.data, 1000, message.FetchQuestions(_))
   echo answer_list
   case start_args_opt {
     Some(start_args) ->

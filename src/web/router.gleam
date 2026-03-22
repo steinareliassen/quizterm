@@ -1,21 +1,22 @@
-import gleam/int
 import gleam/dynamic/decode
 import gleam/erlang/process.{type Subject}
 import gleam/http
+import gleam/int
 import gleam/list
 import gleam/otp/actor.{type Started}
-import shared/message.{type ClientsServer, type RoomControl}
+import shared/message.{type ClientsServer, type RoomControl, type StateControl}
 import web/handlers/serve.{board, main_html, room, slow, status_head}
 import wisp.{type Request, type Response}
 
 pub fn handle_request(
-  actor: Started(Subject(RoomControl(ClientsServer))),
+  room_handler: Started(Subject(RoomControl(ClientsServer))),
+  state_handler: Started(Subject(StateControl)),
   req: Request,
 ) -> Response {
   use req <- middleware(req)
   case wisp.path_segments(req) {
-    ["api", ..path] -> handle_api(actor, req, path)
-    _ -> handle_html(actor, req)
+    ["api", ..path] -> handle_api(state_handler, req, path)
+    _ -> handle_html(room_handler, req)
   }
 }
 
@@ -33,7 +34,7 @@ fn handle_html(
 }
 
 fn handle_api(
-  actor: Started(Subject(RoomControl(ClientsServer))),
+  actor: Started(Subject(StateControl)),
   req: Request,
   path: List(String),
 ) {
@@ -44,7 +45,6 @@ fn handle_api(
     _, _ -> "nothing to see here"
   }
   |> serve.create_json_response
-
 }
 
 type Answers(a) {
@@ -52,7 +52,7 @@ type Answers(a) {
 }
 
 fn decode_answers(
-  actor: Started(Subject(RoomControl(ClientsServer))),
+  actor: Started(Subject(StateControl)),
   json_string: decode.Dynamic,
 ) {
   let decode_answer = {
@@ -71,7 +71,7 @@ fn decode_answers(
       list.each(answers, fn(answer_question) {
         actor.send(actor.data, answer_question)
       })
-      "imported "<> int.to_string(list.length(answers)) <> " items."
+      "imported " <> int.to_string(list.length(answers)) <> " items."
     }
     Error(_) -> "error parsing json, failed to import answers."
   }

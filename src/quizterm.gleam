@@ -1,5 +1,6 @@
 import backend/roomhandler
 import backend/sockethandler
+import backend/statehandler
 import gleam/bytes_tree
 import gleam/erlang/application
 import gleam/erlang/process
@@ -15,7 +16,8 @@ import web/router
 import wisp/wisp_mist
 
 pub fn main() {
-  let assert Ok(actor) = roomhandler.initialize()
+  let assert Ok(state_handler) = statehandler.initialize()
+  let assert Ok(room_handler) = roomhandler.initialize(state_handler)
 
   let assert Ok(_) =
     fn(req) {
@@ -23,14 +25,23 @@ pub fn main() {
         ["lustre", "runtime.mjs"] -> serve_runtime()
         ["static", file] -> serve_static(file)
         ["socket", "card", id] -> {
-          sockethandler.serve(req, card.component(), id, actor)
+          sockethandler.serve(req, card.component(), id, room_handler)
         }
         ["socket", "control", id] ->
-          sockethandler.serve(req, control.component(), id, actor)
+          sockethandler.serve(req, control.component(), id, room_handler)
         ["socket", "slow", id] ->
-          sockethandler.serve_slow(req, answerlist.component(), id, actor)
+          sockethandler.serve_slow(
+            req,
+            answerlist.component(),
+            id,
+            room_handler,
+            state_handler,
+          )
         _ ->
-          wisp_mist.handler(router.handle_request(actor, _), "very_secret")(req)
+          wisp_mist.handler(
+            router.handle_request(room_handler, state_handler, _),
+            "very_secret",
+          )(req)
       }
     }
     |> mist.new

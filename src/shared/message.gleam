@@ -16,12 +16,15 @@ pub type NotifyServer {
   GiveAnswer(name: String, answer: Option(String))
 }
 
-pub type RoomControl(msg) {
-  CreateRoom(id: String)
-  FetchRoom(id: String, subject: Subject(Option(msg)))
+pub type StateControl {
   SetQuestion(id: Int, question: String)
   FetchQuestion(id: Int, subject: Subject(Option(String)))
   FetchQuestions(subject: Subject(List(#(Int, String))))
+}
+
+pub type RoomControl(msg) {
+  CreateRoom(id: String)
+  FetchRoom(id: String, subject: Subject(Option(msg)))
 }
 
 pub type AnswerStatus {
@@ -32,11 +35,11 @@ pub type AnswerStatus {
 }
 
 pub type NotifyClient {
-  Exit
   Ping
-  Lobby(names: List(User))
+  Lobby(question: String, names: List(User))
   Answer
   Await
+  Exit
 }
 
 pub type User {

@@ -29,7 +29,7 @@ type State {
 pub opaque type Model {
   Model(
     state: State,
-    lobby: List(User),
+    lobby: #(String, List(User)),
     registry: GroupRegistry(NotifyClient),
     handler: Started(Subject(NotifyServer)),
   )
@@ -38,7 +38,7 @@ pub opaque type Model {
 fn init(handlers: message.ClientsServer) -> #(Model, Effect(Msg)) {
   let #(registry, handler) = handlers
 
-  let model = Model(AskName, [], registry, handler)
+  let model = Model(AskName, #("", []), registry, handler)
   #(model, subscribe(registry, SharedMessage))
 }
 
@@ -77,46 +77,47 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       actor.send(handler.data, message.GiveAnswer(name, Some(answer)))
       #(Model(..model, state: WaitForQuiz(name)), effect.none())
     }
-    SharedMessage(message.Lobby(lobby)) -> #(
-      Model(..model, lobby: lobby),
+    SharedMessage(shared_msg) -> #(
+      handle_server_message(model, shared_msg),
       effect.none(),
     )
-    SharedMessage(message.Exit) -> #(
-      Model(AskName, [], model.registry, handler),
-      effect.none(),
-    )
-    SharedMessage(message.Answer) ->
+  }
+}
+
+fn handle_server_message(model: Model, notify_client) {
+  case notify_client {
+    message.Lobby(question, lobby) -> Model(..model, lobby: #(question, lobby))
+    message.Exit -> Model(AskName, #("", []), model.registry, model.handler)
+    message.Answer ->
       case model.state {
-        WaitForQuiz(name) -> #(
-          Model(..model, state: Answer(name)),
-          effect.none(),
-        )
-        _ -> #(model, effect.none())
+        // We are currently waiting for next quiz question, ok to switch to answer mode
+        WaitForQuiz(name) -> Model(..model, state: Answer(name))
+        // We are not in a state to react, ignore switch to answer mode.
+        _ -> model
       }
-    SharedMessage(message.Await) ->
+    message.Await ->
       case model.state {
-        Answer(name) -> #(
-          Model(..model, state: WaitForQuiz(name)),
-          effect.none(),
-        )
-        _ -> #(model, effect.none())
+        Answer(name) -> Model(..model, state: WaitForQuiz(name))
+        _ -> model
       }
-    SharedMessage(message.Ping) -> {
+    message.Ping -> {
       let has_name = case model.state {
         Answer(name) -> Some(name)
         WaitForQuiz(name) -> Some(name)
         _ -> None
       }
       case has_name {
-        Some(name) -> actor.send(handler.data, message.Pong(name))
+        Some(name) -> actor.send(model.handler.data, message.Pong(name))
         _ -> Nil
       }
-      #(model, effect.none())
+      model
     }
   }
 }
 
 fn view(model: Model) -> Element(Msg) {
+  let #(question, lobby) = model.lobby
+
   element.fragment([
     html.div([attribute.class("terminal-prompt")], [
       case model.state {
@@ -152,8 +153,15 @@ fn view(model: Model) -> Element(Msg) {
         ]),
       ]),
     ]),
-
-    html.div([class("terminal-section")], case model.lobby {
+    html.div([class("terminal-section")], [
+      html.div([attribute.class("terminal-box")], [
+        html.div([attribute.class("terminal-label")], [
+          html.text("[QUESTION]"),
+        ]),
+        html.text("<>" <> question),
+      ]),
+    ]),
+    html.div([class("terminal-section")], case lobby {
       [] -> []
       lobby -> {
         let answered =
@@ -182,7 +190,7 @@ fn view(model: Model) -> Element(Msg) {
       }
     }),
     terminal_section(
-      model.lobby,
+      lobby,
       "[ACTIVE TRANSMISSIONS]",
       fn(x) {
         case x.answer {
@@ -201,7 +209,7 @@ fn view(model: Model) -> Element(Msg) {
       },
     ),
     terminal_section(
-      model.lobby,
+      lobby,
       "[P A S S]",
       fn(x) {
         case x.answer {
@@ -215,7 +223,7 @@ fn view(model: Model) -> Element(Msg) {
       },
     ),
     terminal_section(
-      model.lobby,
+      lobby,
       "[AWAITING RESPONSE]",
       fn(x) {
         case x.answer {

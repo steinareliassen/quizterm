@@ -37,7 +37,6 @@ pub opaque type Msg {
   AnnounceQuiz
   AnnounceAnswer
   PurgePlayers
-  End
   SharedMessage(message: message.NotifyClient)
 }
 
@@ -63,29 +62,27 @@ fn subscribe(
 }
 
 fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
-  let registry = model.registry
   let handler = model.handler
-  case msg {
-    PurgePlayers -> {
-      actor.send(handler.data, message.PurgePlayers)
-      #(model, effect.none())
-    }
-    AnnounceQuiz -> {
-      actor.send(handler.data, AnswerQuiz)
-      #(Model(Quiz, registry:, handler:), effect.none())
-    }
-    AnnounceAnswer -> {
-      actor.send(handler.data, RevealAnswer)
-      #(Model(Reveal, registry:, handler:), effect.none())
-    }
-    End -> #(model, effect.none())
-    SharedMessage(message.Await) -> #(
-      Model(Reveal, registry:, handler:),
-      effect.none(),
-    )
-
-    SharedMessage(_) -> #(model, effect.none())
-  }
+  #(
+    case msg {
+      PurgePlayers -> {
+        // Temp removed button to issue this action.
+        actor.send(handler.data, message.PurgePlayers)
+        model
+      }
+      AnnounceQuiz -> {
+        actor.send(handler.data, AnswerQuiz)
+        Model(..model, state: Quiz)
+      }
+      AnnounceAnswer -> {
+        actor.send(handler.data, RevealAnswer)
+        Model(..model, state: Reveal)
+      }
+      SharedMessage(message.Await) -> Model(..model, state: Reveal)
+      SharedMessage(_) -> model
+    },
+    effect.none(),
+  )
 }
 
 fn view(model: Model) -> Element(Msg) {
@@ -109,7 +106,7 @@ fn view(model: Model) -> Element(Msg) {
           }
           Reveal -> {
             keyed.div([attribute.class("control")], [
-              #("next", view_button("Ask for next answer", AnnounceQuiz)),
+              #("next", view_button("Ask next question", AnnounceQuiz)),
             ])
           }
         },
