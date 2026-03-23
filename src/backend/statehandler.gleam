@@ -1,4 +1,3 @@
-import gleam/int
 import gleam/list
 import gleam/option.{Some}
 import gleam/otp/actor

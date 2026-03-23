@@ -147,18 +147,14 @@ fn view(model: Model) -> Element(Msg) {
           case model.state {
             AskName -> html.text("STATUS: Please input your name")
             NameOk(_) -> html.text("STATUS: Please validate your name")
-            Answer(_) -> html.text("STATUS: Answer the question")
+            Answer(_) ->
+              html.div([], [
+                html.div([], [html.text("STATUS: Answer the following:")]),
+                html.div([], [html.text(question)]),
+              ])
             _ -> html.text("STATUS: Waiting for next question")
           },
         ]),
-      ]),
-    ]),
-    html.div([class("terminal-section")], [
-      html.div([attribute.class("terminal-box")], [
-        html.div([attribute.class("terminal-label")], [
-          html.text("[QUESTION]"),
-        ]),
-        html.text("<>" <> question),
       ]),
     ]),
     html.div([class("terminal-section")], case lobby {

@@ -1,4 +1,4 @@
-cat test.json | curl --json @- http://localhost:4321/api/answers
+cat test.json | curl --json @- http://localhost:1234/api/answers
 
 echo ""
 echo ""
