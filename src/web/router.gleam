@@ -1,3 +1,5 @@
+import gleam/bit_array
+import gleam/crypto
 import gleam/dynamic/decode
 import gleam/erlang/process.{type Subject}
 import gleam/http
@@ -40,34 +42,59 @@ fn handle_api(
 ) {
   use json <- wisp.require_json(req)
 
-  case req.method, path {
-    http.Post, ["answers"] -> decode_answers(actor, json)
-    _, _ -> "nothing to see here"
+  case list.key_find(req.headers, "x-api-key") {
+    Ok(key) -> {
+      case
+        bit_array.base64_encode(crypto.hash(crypto.Sha256, <<key:utf8>>), True)
+        == "1nIr1fQzs0K9UZAeUcG/67n12iRiviIS6gO5WXyI2+0="
+      {
+        True ->
+          case req.method, path {
+            http.Post, ["info"] -> decode_info(actor, json)
+            http.Post, ["questions"] ->
+              decode_index_to_text(actor, json, message.SetQuestion)
+            http.Post, ["answers"] ->
+              decode_index_to_text(actor, json, message.SetAnswer)
+            _, _ -> "nothing to see here"
+          }
+        False -> "invalid api key"
+      }
+    }
+    Error(_) -> "missing api key"
   }
   |> serve.create_json_response
 }
 
-type Answers(a) {
-  Answers(answers: List(a))
-}
-
-fn decode_answers(
+fn decode_info(
   actor: Started(Subject(StateControl)),
   json_string: decode.Dynamic,
 ) {
+  let decode_uri = {
+    use uri <- decode.field("uri", decode.string)
+    decode.success(message.SetInfo(uri))
+  }
+  case decode.run(json_string, decode_uri) {
+    Ok(info) -> {
+      actor.send(actor.data, info)
+      "Updated info"
+    }
+    Error(_) -> "error parsing json, failed to update info."
+  }
+}
+
+fn decode_index_to_text(
+  actor: Started(Subject(StateControl)),
+  json_string: decode.Dynamic,
+  message: fn(Int, String) -> StateControl,
+) {
   let decode_answer = {
-    use name <- decode.field("question", decode.int)
-    use email <- decode.field("answer", decode.string)
-    decode.success(message.SetQuestion(name, email))
+    use index <- decode.field("index", decode.int)
+    use text <- decode.field("text", decode.string)
+    decode.success(message(index, text))
   }
 
-  let decode_answers = {
-    use answers <- decode.field("answers", decode.list(decode_answer))
-    decode.success(Answers(answers:))
-  }
-
-  case decode.run(json_string, decode_answers) {
-    Ok(Answers(answers)) -> {
+  case decode.run(json_string, decode.list(decode_answer)) {
+    Ok(answers) -> {
       list.each(answers, fn(answer_question) {
         actor.send(actor.data, answer_question)
       })

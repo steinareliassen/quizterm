@@ -18,6 +18,8 @@ pub type NotifyServer {
 
 pub type StateControl {
   SetQuestion(id: Int, question: String)
+  SetAnswer(id: Int, answer: String)
+  SetInfo(url: String)
   FetchQuestion(id: Int, subject: Subject(Option(String)))
   FetchQuestions(subject: Subject(List(#(Int, String))))
 }
