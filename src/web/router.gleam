@@ -70,7 +70,7 @@ fn decode_info(
   json_string: decode.Dynamic,
 ) {
   let decode_uri = {
-    use uri <- decode.field("uri", decode.string)
+    use uri <- decode.field("teaserImage", decode.string)
     decode.success(message.SetInfo(uri))
   }
   case decode.run(json_string, decode_uri) {
