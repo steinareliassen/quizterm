@@ -1,3 +1,6 @@
+# Ignore file that should contain secrets
+quizterm.env
+
 manifest.toml
 /build
 # ---> Erlang

@@ -30,7 +30,10 @@ fn handle_html(
     ["slow", id] -> slow(actor, id)
     ["board", id] -> board(actor, id)
     ["room", id] -> room(actor, id)
-    _ -> status_head("Nothing to see here")
+    _ -> {
+      wisp.log_info("No match for request")
+      status_head("Nothing to see here")
+    }
   }
   |> main_html
 }
@@ -55,12 +58,16 @@ fn handle_api(
               decode_index_to_text(actor, json, message.SetQuestion)
             http.Post, ["answers"] ->
               decode_index_to_text(actor, json, message.SetAnswer)
-            _, _ -> "nothing to see here"
+            _, _ -> #(404, "bad api apth","Resource not found")
           }
-        False -> "invalid api key"
+        False -> {
+          #(401, "invalid api key","unauthorized")
+        }
       }
     }
-    Error(_) -> "missing api key"
+    Error(_) -> {
+      #(401, "missing api key","unauthorized")
+    }
   }
   |> serve.create_json_response
 }
@@ -76,9 +83,9 @@ fn decode_info(
   case decode.run(json_string, decode_uri) {
     Ok(info) -> {
       actor.send(actor.data, info)
-      "Updated info"
+      #(200, "Updated info", "Updated info")
     }
-    Error(_) -> "error parsing json, failed to update info."
+    Error(_) -> #(400, "Unable to update info","bad request")
   }
 }
 
@@ -98,9 +105,9 @@ fn decode_index_to_text(
       list.each(answers, fn(answer_question) {
         actor.send(actor.data, answer_question)
       })
-      "imported " <> int.to_string(list.length(answers)) <> " items."
+      #(200, "imported " <> int.to_string(list.length(answers)) <> " items.","imported " <> int.to_string(list.length(answers)) <> " items.")
     }
-    Error(_) -> "error parsing json, failed to import answers."
+    Error(_) -> #(400, "Failed to import","bad request")
   }
 }
 

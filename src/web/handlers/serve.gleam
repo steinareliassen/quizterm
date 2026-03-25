@@ -1,5 +1,6 @@
 import gleam/erlang/process.{type Subject}
 import gleam/json
+import gleam/int
 import gleam/option.{None, Some}
 import gleam/otp/actor.{type Started}
 import lustre/attribute.{class}
@@ -102,7 +103,9 @@ pub fn board(
   }
 }
 
-pub fn create_json_response(output: String) {
+pub fn create_json_response(response: #(Int, String, String)) {
+  let #(code, message, output) = response
+  wisp.log_info("[api][" <>int.to_string(code)<>"][" <> message<> "]")
   json.object([#("response", json.string(output))])
   |> json.to_string |> wisp.json_response(200)
 }

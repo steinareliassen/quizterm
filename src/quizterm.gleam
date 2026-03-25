@@ -14,8 +14,11 @@ import web/components/card
 import web/components/control
 import web/router
 import wisp/wisp_mist
+import wisp
 
 pub fn main() {
+  wisp.configure_logger()
+
   let assert Ok(state_handler) = statehandler.initialize()
   let assert Ok(room_handler) = roomhandler.initialize(state_handler)
 

@@ -46,7 +46,7 @@ pub fn serve_slow(
 ) -> Response(ResponseData) {
   let start_args_opt = actor.call(roomhandler.data, 1000, message.FetchRoom(id, _))
   let answer_list = actor.call(statehandler.data, 1000, message.FetchQuestions(_))
-  echo answer_list
+
   case start_args_opt {
     Some(start_args) ->
       mist.websocket(
