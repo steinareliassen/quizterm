@@ -1,23 +1,6 @@
-# Ignore file that should contain secrets
-quizterm.env
-
-manifest.toml
-/build
-# ---> Erlang
-.eunit
-*.o
-*.beam
-*.plt
-erl_crash.dump
-.concrete/DEV_MODE
-
-# rebar 2.x
-.rebar
-rel/example_project
-ebin/*.beam
-deps
-
-# rebar 3
-.rebar3
-_build/
-_checkouts/
+**/.*
+/localbuild.sh
+**/build
+**/dist
+/server/priv/static/client.js
+/server/priv/static/index.html

@@ -1,3 +1,5 @@
+import gleam/bit_array
+import gleam/crypto
 import gleam/erlang/process.{type Subject}
 import gleam/int
 import gleam/list
@@ -6,14 +8,17 @@ import gleam/otp/actor
 import group_registry.{type GroupRegistry}
 import shared/message.{
   type AnswerStatus, type NotifyClient, type StateControl, Answer, AnswerQuiz,
-  Await, GiveAnswer, GiveName, GivenAnswer, HasAnswered, IDontKnow, Lobby,
-  NotAnswered, PingTime, Pong, PurgePlayers, RevealAnswer, User,
+  Await, GiveAnswer, GiveName, GiveSingleAnswer, GivenAnswer, HasAnswered,
+  IDontKnow, Lobby, NotAnswered, PingTime, Pong, PurgePlayers, RevealAnswer,
+  User,
 }
 
 type State {
   State(
     question_number: Int,
-    slow_answers: List(#(String, #(Int, String))),
+    // id, (name (question#, answer_attempt)
+    single_answers: List(#(String, #(String, List(#(String, String))))),
+    // int in #pair: ping counted since response back.
     name_answers: List(#(String, #(Int, AnswerStatus))),
     hide_answers: Bool,
     question: option.Option(String),
@@ -59,18 +64,58 @@ pub fn initialize(
       GiveName(name) -> give_name(state, registry, name)
 
       // A player has answered a question, put it in their state. If every player has answered, signal
-      // to reveal answers
+      // to reveal answers (live game)
       GiveAnswer(name, answer) -> give_answer(state, registry, name, answer)
 
+      // A player has answered a question in "single" game. Register the answer.
+      GiveSingleAnswer(id, question, answer) -> {
+        State(
+          ..state,
+          single_answers: case list.key_find(state.single_answers, id) {
+            Ok(value) -> {
+              let #(name, list) = value
+              list.key_set(state.single_answers, id, #(
+                name,
+                list.key_set(list, question, answer),
+              ))
+            }
+            Error(_) -> {
+              state.single_answers
+            }
+          },
+        )
+      }
       // Reveal all answers given by players, setting the game in a "wait for next question" mode
       RevealAnswer -> revel_answers(state, registry)
 
       // Switch from "Wait for next question" to "Answer next question" mode
       AnswerQuiz -> answer_quiz(state, registry)
+      message.FetchPlayers(subject:) -> {
+        fetch_players(state.single_answers, subject)
+        state
+      }
+      message.AddPlayer(name) ->
+        State(..state, single_answers: add_player(name, state.single_answers))
     }
     |> actor.continue()
   })
   |> actor.start
+}
+
+fn add_player(name: String, players: List(#(String, #(String, List(#(_, _)))))) {
+  let id =
+    bit_array.base64_encode(crypto.hash(crypto.Sha256, <<name:utf8>>), True)
+  case list.key_find(players, id) {
+    Error(_) -> [#(id, #(name, [])), ..players]
+    Ok(_) -> players
+  }
+}
+
+fn fetch_players(
+  players: List(#(String, #(String, List(#(String, String))))),
+  subject: Subject(List(#(String, #(String, List(#(String, String)))))),
+) {
+  actor.send(subject, players)
 }
 
 // Reschedule a new ping request, and ask clients to ping us back
@@ -183,6 +228,39 @@ fn pong(state: State, name) {
   }
 }
 
+// Combine the active player answers with the answers given by the "single" player.
+fn combine_lists(state: State) {
+  list.append(
+    list.map(state.name_answers, fn(name_answer) {
+      let #(name, #(ping_time, answer)) = name_answer
+      User(name, ping_time, case answer, state.hide_answers {
+        GivenAnswer(_), True -> HasAnswered
+        GivenAnswer(answer), False -> GivenAnswer(answer)
+        other, _ -> other
+      })
+    }),
+    // Second list require a bit more work Iterate over each payers answers,
+    // creating user objects where question number match current question number.
+    list.flat_map(state.single_answers, fn(name_answers) {
+      let #(_, #(name, answers)) = name_answers
+      list.filter_map(answers, fn(number_answer) {
+        let #(answer_number, answer) = number_answer
+        case int.to_string(state.question_number) == answer_number {
+          True -> {
+            Ok(
+              User(name, 0, case state.hide_answers {
+                True -> HasAnswered
+                False -> GivenAnswer(answer)
+              }),
+            )
+          }
+          False -> Error("ignore")
+        }
+      })
+    }),
+  )
+}
+
 fn broadcast_lobby(state: State, registry: GroupRegistry(NotifyClient)) {
   broadcast(
     registry,
@@ -194,14 +272,7 @@ fn broadcast_lobby(state: State, registry: GroupRegistry(NotifyClient)) {
         Some(question) -> question
         None -> "(question not found)"
       },
-      list.map(state.name_answers, fn(name_answer) {
-        let #(name, #(ping_time, answer)) = name_answer
-        User(name, ping_time, case answer, state.hide_answers {
-          GivenAnswer(_), True -> HasAnswered
-          GivenAnswer(answer), False -> GivenAnswer(answer)
-          other, _ -> other
-        })
-      }),
+      combine_lists(state),
     ),
   )
 

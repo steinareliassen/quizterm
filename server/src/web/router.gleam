@@ -6,39 +6,35 @@ import gleam/http
 import gleam/int
 import gleam/list
 import gleam/otp/actor.{type Started}
-import shared/message.{type ClientsServer, type RoomControl, type StateControl}
-import web/handlers/serve.{board, main_html, room, slow, status_head}
+import shared/message.{type RoomControl, type StateControl}
+import web/handlers/serve.{html_404}
 import wisp.{type Request, type Response}
 
 pub fn handle_request(
-  room_handler: Started(Subject(RoomControl(ClientsServer))),
+  room_handler: Started(Subject(RoomControl)),
   state_handler: Started(Subject(StateControl)),
   req: Request,
 ) -> Response {
   use req <- middleware(req)
   case wisp.path_segments(req) {
-    ["api", ..path] -> handle_api(state_handler, req, path)
-    _ -> handle_html(room_handler, req)
+    [] | ["index.html"] -> serve.main_html(fetch_rooms(room_handler))
+    ["api", "room"] -> handle_room(room_handler, req)
+    ["api", ..path] -> handle_admin_api(state_handler, req, path)
+    _ -> html_404()
   }
 }
 
-fn handle_html(
-  actor: Started(Subject(RoomControl(ClientsServer))),
-  req: Request,
-) -> Response {
-  case wisp.path_segments(req) {
-    ["slow", id] -> slow(actor, id)
-    ["board", id] -> board(actor, id)
-    ["room", id] -> room(actor, id)
-    _ -> {
-      wisp.log_info("No match for request")
-      status_head("Nothing to see here")
-    }
+fn handle_room(room_handler: Started(Subject(RoomControl)), req: Request) {
+  use json <- wisp.require_json(req)
+
+  case req.method {
+    http.Post -> add_room(room_handler, json)
+    _ -> #(404, "bad api path", "Resource not found")
   }
-  |> main_html
+  |> serve.create_json_response
 }
 
-fn handle_api(
+fn handle_admin_api(
   actor: Started(Subject(StateControl)),
   req: Request,
   path: List(String),
@@ -58,18 +54,24 @@ fn handle_api(
               decode_index_to_text(actor, json, message.SetQuestion)
             http.Post, ["answers"] ->
               decode_index_to_text(actor, json, message.SetAnswer)
-            _, _ -> #(404, "bad api apth","Resource not found")
+            _, _ -> #(404, "bad api path", "Resource not found")
           }
         False -> {
-          #(401, "invalid api key","unauthorized")
+          #(401, "invalid api key", "unauthorized")
         }
       }
     }
     Error(_) -> {
-      #(401, "missing api key","unauthorized")
+      #(401, "missing api key", "unauthorized")
     }
   }
   |> serve.create_json_response
+}
+
+fn fetch_rooms(
+  room_handler: Started(Subject(RoomControl)),
+) -> List(#(String, message.RoomInfo)) {
+  actor.call(room_handler.data, 1000, message.FetchRooms)
 }
 
 fn decode_info(
@@ -85,7 +87,27 @@ fn decode_info(
       actor.send(actor.data, info)
       #(200, "Updated info", "Updated info")
     }
-    Error(_) -> #(400, "Unable to update info","bad request")
+    Error(_) -> #(400, "Unable to update info", "bad request")
+  }
+}
+
+fn add_room(room_handler: Started(Subject(RoomControl)), json) {
+  let decode_room = {
+    use id <- decode.field("id", decode.string)
+    use pin_enc <- decode.field("pin_enc", decode.string)
+    use name <- decode.field("name", decode.string)
+    decode.success(message.CreateRoom(
+      id:,
+      room: message.RoomInfo(name, pin_enc),
+    ))
+  }
+
+  case decode.run(json, decode_room) {
+    Ok(player) -> {
+      actor.send(room_handler.data, player)
+      #(200, "added room", "added room")
+    }
+    Error(_msg) -> #(400, "unable to add room", "bad request")
   }
 }
 
@@ -105,9 +127,13 @@ fn decode_index_to_text(
       list.each(answers, fn(answer_question) {
         actor.send(actor.data, answer_question)
       })
-      #(200, "imported " <> int.to_string(list.length(answers)) <> " items.","imported " <> int.to_string(list.length(answers)) <> " items.")
+      #(
+        200,
+        "imported " <> int.to_string(list.length(answers)) <> " items.",
+        "imported " <> int.to_string(list.length(answers)) <> " items.",
+      )
     }
-    Error(_) -> #(400, "Failed to import","bad request")
+    Error(_) -> #(400, "Failed to import", "bad request")
   }
 }
 

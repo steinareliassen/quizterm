@@ -12,7 +12,7 @@ import lustre/element/html
 import lustre/server_component
 import shared/message.{type NotifyClient, type NotifyServer, type User, User}
 import web/components/shared.{
-  step_prompt, view_input, view_named_input, view_yes_no,
+  input_new_player, step_prompt, view_named_input, view_players,
 }
 
 pub fn component() -> lustre.App(message.ClientsServer, Model, Msg) {
@@ -29,6 +29,7 @@ type State {
 pub opaque type Model {
   Model(
     state: State,
+    players: List(#(String, #(String, List(#(String, String))))),
     lobby: #(String, List(User)),
     registry: GroupRegistry(NotifyClient),
     handler: Started(Subject(NotifyServer)),
@@ -38,7 +39,14 @@ pub opaque type Model {
 fn init(handlers: message.ClientsServer) -> #(Model, Effect(Msg)) {
   let #(registry, handler) = handlers
 
-  let model = Model(AskName, #("", []), registry, handler)
+  let model =
+    Model(
+      AskName,
+      actor.call(handler.data, 1000, message.FetchPlayers),
+      #("", []),
+      registry,
+      handler,
+    )
   #(model, subscribe(registry, SharedMessage))
 }
 
@@ -58,8 +66,8 @@ fn subscribe(
 
 pub opaque type Msg {
   SharedMessage(message: NotifyClient)
-  ReceiveName(message: String)
-  AcceptName(accept: Option(String))
+  ReceiveName(Option(String))
+  AcceptName(Option(#(String, String)))
   GiveAnswer(name: String, answer: String)
 }
 
@@ -67,9 +75,13 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   let handler = model.handler
 
   case msg {
-    ReceiveName(name) -> #(Model(..model, state: NameOk(name)), effect.none())
+    ReceiveName(Some(name)) -> #(
+      Model(..model, state: NameOk(name)),
+      effect.none(),
+    )
     AcceptName(Some(name)) -> {
-      actor.send(handler.data, message.GiveName(name:))
+      let #(_, name) = name
+      actor.send(handler.data, message.GiveName(name))
       #(Model(..model, state: WaitForQuiz(name)), effect.none())
     }
     AcceptName(None) -> #(Model(..model, state: AskName), effect.none())
@@ -81,13 +93,15 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       handle_server_message(model, shared_msg),
       effect.none(),
     )
+    _ -> #(model, effect.none())
   }
 }
 
 fn handle_server_message(model: Model, notify_client) {
   case notify_client {
     message.Lobby(question, lobby) -> Model(..model, lobby: #(question, lobby))
-    message.Exit -> Model(AskName, #("", []), model.registry, model.handler)
+    message.Exit ->
+      Model(AskName, model.players, #("", []), model.registry, model.handler)
     message.Answer ->
       case model.state {
         // We are currently waiting for next quiz question, ok to switch to answer mode
@@ -117,28 +131,7 @@ fn handle_server_message(model: Model, notify_client) {
 
 fn view(model: Model) -> Element(Msg) {
   let #(question, lobby) = model.lobby
-
   element.fragment([
-    html.div([attribute.class("terminal-prompt")], [
-      case model.state {
-        AskName ->
-          step_prompt(
-            "Hello stranger. To join the quiz, I need to know your name",
-            fn() { view_input(ReceiveName) },
-          )
-        NameOk(name) ->
-          step_prompt(
-            "Your name is " <> name <> "? Are you absolutely sure???",
-            fn() { view_yes_no(name, AcceptName) },
-          )
-        Answer(name) ->
-          step_prompt(
-            "The Quiz Lead will now ask the question, and you may answer.",
-            fn() { view_named_input(name, GiveAnswer) },
-          )
-        _ -> html.h3([], [html.text("Waiting for next question")])
-      },
-    ]),
     html.div([class("terminal-header")], [
       html.div([class("terminal-status")], [
         html.span([class("status-blink")], [html.text("●")]),
@@ -157,83 +150,134 @@ fn view(model: Model) -> Element(Msg) {
         ]),
       ]),
     ]),
-    html.div([class("terminal-section")], case lobby {
-      [] -> []
-      lobby -> {
-        let answered =
-          list.filter(lobby, fn(x) {
-            case x.answer {
-              message.IDontKnow | message.HasAnswered | message.GivenAnswer(_) ->
-                True
-              _ -> False
-            }
-          })
-          |> list.length
-          |> int.to_string
-        let size = lobby |> list.length |> int.to_string
-        [
-          html.div([attribute.class("terminal-box")], [
-            html.span([attribute.class("terminal-label")], [
-              html.text("[PROGRESS] "),
-            ]),
-            html.text("Answered: "),
-            case answered == size {
-              True -> html.text("Everyone!")
-              False -> html.text(answered <> "/" <> size)
-            },
-          ]),
-        ]
+
+    case model.state {
+      AskName -> {
+        html.div([class("participants-grid")], [
+          case model.players {
+            [] -> input_new_player(ReceiveName)
+            _ ->
+              view_players(
+                list.map(model.players, fn(player) {
+                  let #(id, #(name, _)) = player
+                  #(id, name)
+                }),
+                AcceptName,
+              )
+          },
+        ])
       }
-    }),
-    terminal_section(
-      lobby,
-      "[ACTIVE TRANSMISSIONS]",
-      fn(x) {
-        case x.answer {
-          message.GivenAnswer(_) | message.HasAnswered -> True
-          _ -> False
-        }
-      },
-      fn(user) {
-        let User(name, ping_time, answer) = user
-        case answer {
-          message.GivenAnswer(answer) -> answer
-          message.HasAnswered -> "Answer Given"
-          _ -> "Odd State..."
-        }
-        |> content_cell(name, ping_time, _)
-      },
-    ),
-    terminal_section(
-      lobby,
-      "[P A S S]",
-      fn(x) {
-        case x.answer {
-          message.IDontKnow -> True
-          _ -> False
-        }
-      },
-      fn(user) {
-        let User(name, ping_time, _) = user
-        content_cell(name, ping_time, "P.A.S.S :(")
-      },
-    ),
-    terminal_section(
-      lobby,
-      "[AWAITING RESPONSE]",
-      fn(x) {
-        case x.answer {
-          message.NotAnswered -> True
-          _ -> False
-        }
-      },
-      fn(user) {
-        case user {
-          User(name, ping_time, _) ->
-            content_cell(name, ping_time, "Not Answered")
-        }
-      },
-    ),
+      NameOk(name) -> {
+        html.div([class("participants-grid")], [
+          shared.confirm_cells(
+            Some("Join as this player: " <> name <> "?"),
+            #("", name),
+            AcceptName,
+          ),
+        ])
+      }
+      Answer(name) -> {
+        html.div([attribute.class("terminal-prompt")], [
+          step_prompt(
+            "The Quiz Lead will now ask the question, and you may answer.",
+            fn() { view_named_input(name, GiveAnswer) },
+          ),
+        ])
+      }
+      _ -> {
+        html.div([attribute.class("terminal-prompt")], [
+          html.h3([], [html.text("Waiting for next question")]),
+        ])
+      }
+    },
+    case model.state {
+      Answer(_) | WaitForQuiz(_) ->
+        element.fragment([
+          html.div([class("terminal-section")], case lobby {
+            [] -> []
+            lobby -> {
+              let answered =
+                list.filter(lobby, fn(x) {
+                  case x.answer {
+                    message.IDontKnow
+                    | message.HasAnswered
+                    | message.GivenAnswer(_) -> True
+                    _ -> False
+                  }
+                })
+                |> list.length
+                |> int.to_string
+              let size = lobby |> list.length |> int.to_string
+              [
+                html.div([attribute.class("terminal-box")], [
+                  html.span([attribute.class("terminal-label")], [
+                    html.text("[PROGRESS] "),
+                  ]),
+                  html.text("Answered: "),
+                  case answered == size {
+                    True -> html.text("Everyone!")
+                    False -> html.text(answered <> "/" <> size)
+                  },
+                ]),
+              ]
+            }
+          }),
+          terminal_section(
+            lobby,
+            "[ACTIVE TRANSMISSIONS]",
+            fn(x) {
+              case x.answer {
+                message.GivenAnswer(_) | message.HasAnswered -> True
+                _ -> False
+              }
+            },
+            fn(user) {
+              let User(name, ping_time, answer) = user
+              case answer {
+                message.GivenAnswer(answer) -> answer
+                message.HasAnswered -> "Answer Given"
+                _ -> "Odd State..."
+              }
+              |> content_cell(name, ping_time, _)
+            },
+          ),
+          terminal_section(
+            lobby,
+            "[P A S S]",
+            fn(x) {
+              case x.answer {
+                message.IDontKnow -> True
+                _ -> False
+              }
+            },
+            fn(user) {
+              let User(name, ping_time, _) = user
+              content_cell(name, ping_time, "P.A.S.S :(")
+            },
+          ),
+          terminal_section(
+            lobby,
+            "[AWAITING RESPONSE]",
+            fn(x) {
+              case x.answer {
+                message.NotAnswered -> True
+                _ -> False
+              }
+            },
+            fn(user) {
+              case user {
+                User(name, ping_time, _) ->
+                  content_cell(name, ping_time, "Not Answered")
+              }
+            },
+          ),
+          server_component.element(
+            [server_component.route("/socket/control/TMA/PINA")],
+            [],
+          ),
+        ])
+      _ -> element.none()
+    },
   ])
 }
 

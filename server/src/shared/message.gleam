@@ -14,6 +14,9 @@ pub type NotifyServer {
   PurgePlayers
   GiveName(name: String)
   GiveAnswer(name: String, answer: Option(String))
+  GiveSingleAnswer(id: String, question: String, answer: String)
+  FetchPlayers(subject: Subject(List(#(String, #(String, List(#(String, String)))))))
+  AddPlayer(String)
 }
 
 pub type StateControl {
@@ -21,12 +24,21 @@ pub type StateControl {
   SetAnswer(id: Int, answer: String)
   SetInfo(url: String)
   FetchQuestion(id: Int, subject: Subject(Option(String)))
-  FetchQuestions(subject: Subject(List(#(Int, String))))
+  FetchQuestions(subject: Subject(List(#(String, String))))
 }
 
-pub type RoomControl(msg) {
-  CreateRoom(id: String)
-  FetchRoom(id: String, subject: Subject(Option(msg)))
+pub type Room {
+  Room(name: String, pin_enc: String, actors: ClientsServer)
+}
+
+pub type RoomInfo {
+  RoomInfo(name: String, pin_enc: String)
+}
+
+pub type RoomControl {
+  CreateRoom(id: String, room: RoomInfo)
+  FetchRoom(id: String, pin: String, subject: Subject(Option(ClientsServer)))
+  FetchRooms(subject: Subject(List(#(String, RoomInfo))))
 }
 
 pub type AnswerStatus {

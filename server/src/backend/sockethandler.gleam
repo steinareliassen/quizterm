@@ -12,11 +12,12 @@ import shared/message
 
 pub fn serve(
   request: Request(Connection),
-  component: lustre.App(start_args, model, msg),
+  component: lustre.App(message.ClientsServer, model, msg),
   id: String,
-  actor: actor.Started(Subject(message.RoomControl(start_args))),
+  pin: String,
+  actor: actor.Started(Subject(message.RoomControl)),
 ) -> Response(ResponseData) {
-  let start_args = actor.call(actor.data, 1000, message.FetchRoom(id, _))
+  let start_args = actor.call(actor.data, 1000, message.FetchRoom(id, pin, _))
   case start_args {
     Some(start_args) ->
       mist.websocket(
@@ -33,25 +34,27 @@ pub fn serve(
   }
 }
 
-pub fn serve_slow(
+pub fn serve_single(
   request: Request(Connection),
   component: lustre.App(
-    #(List(#(Int, String)), start_args),
+    #(List(#(String, String)), message.ClientsServer),
     model,
     msg,
   ),
   id: String,
-  roomhandler: actor.Started(Subject(message.RoomControl(start_args))),
+  pin: String,
+  roomhandler: actor.Started(Subject(message.RoomControl)),
   statehandler: actor.Started(Subject(message.StateControl)),
 ) -> Response(ResponseData) {
-  let start_args_opt = actor.call(roomhandler.data, 1000, message.FetchRoom(id, _))
-  let answer_list = actor.call(statehandler.data, 1000, message.FetchQuestions(_))
+  let start_args_opt =
+    actor.call(roomhandler.data, 1000, message.FetchRoom(id, pin, _))
+  let answer_list = actor.call(statehandler.data, 1000, message.FetchQuestions)
 
   case start_args_opt {
     Some(start_args) ->
       mist.websocket(
         request:,
-        on_init: init_socket(_, component, #(answer_list,start_args)),
+        on_init: init_socket(_, component, #(answer_list, start_args)),
         handler: loop_socket,
         on_close: close_socket,
       )

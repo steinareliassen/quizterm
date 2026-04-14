@@ -1,3 +1,4 @@
+import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/otp/actor
@@ -63,7 +64,7 @@ pub fn initialize() {
           subject,
           list.map(state.questions, fn(x) {
             let #(i, #(q, _)) = x
-            #(i, q)
+            #(int.to_string(i), q)
           }),
         )
         state
