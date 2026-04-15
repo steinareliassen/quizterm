@@ -18,9 +18,13 @@ import web/components/control
 import web/router
 import wisp
 import wisp/wisp_mist
+import envoy
 
 pub fn main() {
   wisp.configure_logger()
+
+  let assert Ok(sha_api_key) = envoy.get("SHAED_API_KEY")
+  let assert Ok(secret) = envoy.get("QTERM_SECRET")
 
   let assert Ok(state_handler) = statehandler.initialize()
   let assert Ok(room_handler) = roomhandler.initialize(state_handler)
@@ -58,8 +62,8 @@ pub fn main() {
               )
             _ ->
               wisp_mist.handler(
-                router.handle_request(room_handler, state_handler, _),
-                "very_secret",
+                router.handle_request(sha_api_key, room_handler, state_handler, _),
+                secret,
               )(req)
           }
       }
@@ -79,7 +83,6 @@ fn serve_static(filename: String) {
   let data =
     mist.send_file(path, offset: 0, limit: None)
     |> result.map(fn(file) {
-      echo "SUCCESS " <> filename
       response.new(200)
       |> response.set_header("Content-Type", case surname {
         Ok("css") -> "text/css"
@@ -89,13 +92,11 @@ fn serve_static(filename: String) {
       |> response.set_body(file)
     })
     |> result.lazy_unwrap(fn() {
-      echo "FAIL " <> filename
       response.new(404)
       |> response.set_body(
         bytes_tree.from_string("Requested resource not found") |> mist.Bytes,
       )
     })
-  echo "Attempting to serve file " <> filename <> " was "
 
   data
 }

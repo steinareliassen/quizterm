@@ -1,16 +1,19 @@
 import gleam/bit_array
 import gleam/crypto
+import gleam/dynamic
 import gleam/dynamic/decode
 import gleam/erlang/process.{type Subject}
 import gleam/http
 import gleam/int
 import gleam/list
 import gleam/otp/actor.{type Started}
+import gleam/string
 import shared/message.{type RoomControl, type StateControl}
 import web/handlers/serve.{html_404}
 import wisp.{type Request, type Response}
 
 pub fn handle_request(
+  sha_api_key: String,
   room_handler: Started(Subject(RoomControl)),
   state_handler: Started(Subject(StateControl)),
   req: Request,
@@ -18,24 +21,28 @@ pub fn handle_request(
   use req <- middleware(req)
   case wisp.path_segments(req) {
     [] | ["index.html"] -> serve.main_html(fetch_rooms(room_handler))
-    ["api", "room"] -> handle_room(room_handler, req)
-    ["api", ..path] -> handle_admin_api(state_handler, req, path)
+    ["api", ..path] ->
+      handle_api(sha_api_key, room_handler, state_handler, req, path)
+
     _ -> html_404()
   }
 }
 
-fn handle_room(room_handler: Started(Subject(RoomControl)), req: Request) {
-  use json <- wisp.require_json(req)
-
+fn handle_room(
+  room_handler: Started(Subject(RoomControl)),
+  req: Request,
+  json: dynamic.Dynamic,
+) {
   case req.method {
     http.Post -> add_room(room_handler, json)
     _ -> #(404, "bad api path", "Resource not found")
   }
-  |> serve.create_json_response
 }
 
-fn handle_admin_api(
-  actor: Started(Subject(StateControl)),
+fn handle_api(
+  sha_api_key: String,
+  room_handler: Started(Subject(RoomControl)),
+  state_handler: Started(Subject(StateControl)),
   req: Request,
   path: List(String),
 ) {
@@ -44,17 +51,16 @@ fn handle_admin_api(
   case list.key_find(req.headers, "x-api-key") {
     Ok(key) -> {
       case
-        bit_array.base64_encode(crypto.hash(crypto.Sha256, <<key:utf8>>), True)
-        == "1nIr1fQzs0K9UZAeUcG/67n12iRiviIS6gO5WXyI2+0="
+        string.lowercase(
+          bit_array.base16_encode(crypto.hash(crypto.Sha256, <<key:utf8>>)),
+        )
+        == string.lowercase(sha_api_key)
       {
         True ->
-          case req.method, path {
-            http.Post, ["info"] -> decode_info(actor, json)
-            http.Post, ["questions"] ->
-              decode_index_to_text(actor, json, message.SetQuestion)
-            http.Post, ["answers"] ->
-              decode_index_to_text(actor, json, message.SetAnswer)
-            _, _ -> #(404, "bad api path", "Resource not found")
+          case path {
+            ["room"] -> handle_room(room_handler, req, json)
+            [..path] -> handle_admin_api(state_handler, req, path, json)
+            _ -> #(404, "bad api path", "Resource not found")
           }
         False -> {
           #(401, "invalid api key", "unauthorized")
@@ -66,6 +72,22 @@ fn handle_admin_api(
     }
   }
   |> serve.create_json_response
+}
+
+fn handle_admin_api(
+  actor: Started(Subject(StateControl)),
+  req: Request,
+  path: List(String),
+  json: dynamic.Dynamic,
+) {
+  case req.method, path {
+    http.Post, ["info"] -> decode_info(actor, json)
+    http.Post, ["questions"] ->
+      decode_index_to_text(actor, json, message.SetQuestion)
+    http.Post, ["answers"] ->
+      decode_index_to_text(actor, json, message.SetAnswer)
+    _, _ -> #(404, "bad api path", "Resource not found")
+  }
 }
 
 fn fetch_rooms(

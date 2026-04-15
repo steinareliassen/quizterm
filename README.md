@@ -1,48 +1,56 @@
 ### Welcome to QUIZTerm
-## Building and running
+
+This documentation is for building and running quizterm. You do not need to worry about this
+document to be a user.
+
+#### Getting env variables ready
+
+An api-key, and a base16-encoded version of it is needed to communicate with the 
+endpoints. You can use the sha256 command from the "hashalot" bundle or similar.
+```
+sha256 -x
+Enter passphrase: 
+```
+The passphrase test will output
+```
+9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08
+```
+
+This is the value provided in "quizterm.env.example". Feel free to use this for "local
+testing", copy the file to "quizterm.env". For non-local testing, pick a better API key...
+
+The provided "init script" that sets up some "dummy examples" needs the non-hashed
+version of the api-key, see the section "Running init script" after "Building and running"
+
+#### Building and running
 
 Docker, or a compatible container manager, like podman, is required to build and run
 quizterm. The alternative is to install Gleam and Erlang/BEAM and run it dockerless.
 Unless you plan to do Gleam development, using Docker will save a lot of hassle.
 
-To compile project and build docker image, write:
+To build and start write 
 ```
-docker build . -t quizterm:1
+docker compose up
 ```
-quizterm can be whatever name you want to give the container, 1 can be 
-changed to whatever you want the version of the container to be.
+You can now access quizterm on http://localhost:1234. If you need a different port, modify 
+docker-compose.yml, the number 1234 before the colon Note that it will always say
+"listening on port 1234", this is the port used inside the docker image.
 
-Start server on port 4321:
+Stop quizterm with 
+
 ```
-docker run -p 4321:1234 quizterm:1
+docker compose down
 ```
 
-Port 1234 is the port used internally in the docker container, while 4321
-is the port exposed outside the container. The latter can be set to whatever
-port you want to use.
+#### Running the init script
 
-Open web browser and access http://localhost:4321
+A provided init script sets up some bits for testing, it creates several "team rooms",
+and generates questions and answers.
 
-## The rest of this readme is currently outdated and will be updated shortly
+If you used the "default" values in quizterm.env, the api-key "test" will work with the
+init script. If not, edit the api-test/init.sh file and set correct api-key (non-hashed).
 
-QUIZTerm is a simple online "quiz answering" game. It provides a way for contestants to provide answers to questions,
-and reveal the answers for everyone at the same time.
-
-Cards showing who are playing, their answer status (have they answered or not?), and when revealed, what their answer
-was, will show up on everyones screen.
-
-Not quite finished yet, it is at a point where it is "usable" enough.
-
-Endpoints explained
-
-| Endpoint                 | Usage                                                        |
-|--------------------------|--------------------------------------------------------------|
-| /room/<room_id>          | Create room with given room_id (max 200 rooms)               |
-| /board/<room_id>         | Join a game with the given room_id                           |
-| /board/<room_id>/control | Join a game with the given room_id with more control options |
-
-
-| Ingame example           | Idle player              |
-|--------------------------|--------------------------|
-| ![Screenshot](game1.png) | ![Screenshot](game2.png) |
+```
+sh api-test/init.sh
+```
 
