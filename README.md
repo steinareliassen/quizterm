@@ -28,11 +28,12 @@ Docker, or a compatible container manager, like podman, is required to build and
 quizterm. The alternative is to install Gleam and Erlang/BEAM and run it dockerless.
 Unless you plan to do Gleam development, using Docker will save a lot of hassle.
 
-To build and start write 
+To build and start, in the project root folder, write 
 ```
 docker compose up
 ```
-You can now access quizterm on http://localhost:1234. If you need a different port, modify 
+You can now access quizterm on http://localhost:1234 (however you may want to run
+the init script described in next section first). If you need a different port, modify 
 docker-compose.yml, the number 1234 before the colon Note that it will always say
 "listening on port 1234", this is the port used inside the docker image.
 
@@ -46,6 +47,8 @@ docker compose down
 
 A provided init script sets up some bits for testing, it creates several "team rooms",
 and generates questions and answers.
+
+"Team X" will have pin code "PINX", so PINA for Team A, etc.
 
 If you used the "default" values in quizterm.env, the api-key "test" will work with the
 init script. If not, edit the api-test/init.sh file and set correct api-key (non-hashed).

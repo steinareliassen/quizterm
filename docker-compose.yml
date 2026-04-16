@@ -1,6 +1,6 @@
 services:
   quizterm:
-    image: quizterm2
+    image: quizterm
     build: .
     ports:
       - "1234:1234"
