@@ -15,7 +15,8 @@ RUN cd /quizterm/server && gleam deps download
 
 # Compile client code and move generated javascript to server project
 RUN cd /quizterm/client \
-  && gleam run -m lustre/dev build --outdir=/quizterm/server/priv/static
+  && gleam run -m lustre/dev build --minify --outdir=../server/priv/static
+
 
 # Compile the server code
 RUN cd /quizterm/server \
@@ -26,7 +27,7 @@ FROM ghcr.io/gleam-lang/gleam:${GLEAM_VERSION}-erlang-alpine
 
 # Copy the compiled server code from the builder stage
 COPY --from=builder /quizterm/server/build/erlang-shipment /app
-
+COPY --from=builder /quizterm /qt
 # Set up the entrypoint
 WORKDIR /app
 RUN echo -e '#!/bin/sh\nexec ./entrypoint.sh "$@"' > ./start.sh \

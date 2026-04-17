@@ -86,7 +86,7 @@ fn serve_static(filename: String) {
       response.new(200)
       |> response.set_header("Content-Type", case surname {
         Ok("css") -> "text/css"
-        Ok("js") -> "application/javascript"
+        Ok("js") -> "text/javascript"
         Ok(_) | Error(_) -> "text/html"
       })
       |> response.set_body(file)

@@ -1,7 +1,8 @@
 ### Welcome to QUIZTerm
 
 This documentation is for building and running quizterm. You do not need to worry about this
-document to be a user.
+document to be a user. It is a still in "initial draft", but should contain the needed
+bits to start the webapp.
 
 #### Getting env variables ready
 
@@ -30,6 +31,7 @@ Unless you plan to do Gleam development, using Docker will save a lot of hassle.
 
 To build and start, in the project root folder, write 
 ```
+docker compose build # can be skipped if image does not need rebuilding
 docker compose up
 ```
 You can now access quizterm on http://localhost:1234 (however you may want to run
