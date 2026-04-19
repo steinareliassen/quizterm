@@ -100,7 +100,8 @@ pub fn initialize(
         State(..state, players: add_player(name, state.players))
       message.FetchAllAnswers(subject:) -> {
         let listish =
-          list.map(list.range(from: 1, to: 14), fn(a) {
+          // ... Figure out what replaced list.range and do this properly...
+          list.map([1,2,3,4,5,6,7,8,9,10,11,12,13,14], fn(a) {
             #(
               a,
               list.flat_map(state.single_answers, fn(name_answers) {
