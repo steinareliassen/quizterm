@@ -1,6 +1,7 @@
 import backend/roomhandler
 import backend/sockethandler
 import backend/statehandler
+import envoy
 import gleam/bytes_tree
 import gleam/erlang/application
 import gleam/erlang/process
@@ -12,13 +13,11 @@ import gleam/option.{None}
 import gleam/result
 import gleam/string
 import mist.{type ResponseData}
-import web/components/answerlist
-import web/components/card
 import web/components/control
+import web/components/game
 import web/router
 import wisp
 import wisp/wisp_mist
-import envoy
 
 pub fn main() {
   wisp.configure_logger()
@@ -41,8 +40,8 @@ pub fn main() {
             ["lustre", "runtime.mjs"] -> serve_runtime()
             ["client.js"] -> serve_static("client.js")
             ["static", file] -> serve_static(file)
-            ["socket", "live", id, pin] ->
-              sockethandler.serve(req, card.component(), id, pin, room_handler)
+            ["socket", "game", id, pin] ->
+              sockethandler.serve(req, game.component(), id, pin, room_handler)
             ["socket", "control", id, pin] ->
               sockethandler.serve(
                 req,
@@ -51,18 +50,14 @@ pub fn main() {
                 pin,
                 room_handler,
               )
-            ["socket", "single", id, pin] ->
-              sockethandler.serve_single(
-                req,
-                answerlist.component(),
-                id,
-                pin,
-                room_handler,
-                state_handler,
-              )
             _ ->
               wisp_mist.handler(
-                router.handle_request(sha_api_key, room_handler, state_handler, _),
+                router.handle_request(
+                  sha_api_key,
+                  room_handler,
+                  state_handler,
+                  _,
+                ),
                 secret,
               )(req)
           }

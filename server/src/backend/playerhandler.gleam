@@ -1,5 +1,3 @@
-import gleam/bit_array
-import gleam/crypto
 import gleam/erlang/process.{type Subject}
 import gleam/int
 import gleam/list
@@ -16,10 +14,11 @@ import shared/message.{
 type State {
   State(
     question_number: Int,
+    players: List(String),
     // id, (name (question#, answer_attempt)
-    single_answers: List(#(String, #(String, List(#(String, String))))),
+    single_answers: List(#(String, List(#(String, String)))),
     // int in #pair: ping counted since response back.
-    name_answers: List(#(String, #(Int, AnswerStatus))),
+    live_answers: List(#(String, #(Int, AnswerStatus))),
     hide_answers: Bool,
     question: option.Option(String),
     state_handler: actor.Started(Subject(StateControl)),
@@ -30,7 +29,7 @@ pub fn initialize(
   state_handler: actor.Started(Subject(StateControl)),
   registry: GroupRegistry(NotifyClient),
 ) {
-  actor.new(State(1, [], [], True, None, state_handler))
+  actor.new(State(1, [], [], [], True, None, state_handler))
   |> actor.on_message(fn(state: State, message) {
     let question = case state.question {
       None -> {
@@ -68,16 +67,16 @@ pub fn initialize(
       GiveAnswer(name, answer) -> give_answer(state, registry, name, answer)
 
       // A player has answered a question in "single" game. Register the answer.
-      GiveSingleAnswer(id, question, answer) -> {
+      GiveSingleAnswer(name, question, answer) -> {
         State(
           ..state,
-          single_answers: case list.key_find(state.single_answers, id) {
-            Ok(value) -> {
-              let #(name, list) = value
-              list.key_set(state.single_answers, id, #(
+          single_answers: case list.key_find(state.single_answers, name) {
+            Ok(list) -> {
+              list.key_set(
+                state.single_answers,
                 name,
                 list.key_set(list, question, answer),
-              ))
+              )
             }
             Error(_) -> {
               state.single_answers
@@ -91,31 +90,22 @@ pub fn initialize(
       // Switch from "Wait for next question" to "Answer next question" mode
       AnswerQuiz -> answer_quiz(state, registry)
       message.FetchPlayers(subject:) -> {
-        fetch_players(state.single_answers, subject)
+        actor.send(subject, state.players)
         state
       }
       message.AddPlayer(name) ->
-        State(..state, single_answers: add_player(name, state.single_answers))
+        State(..state, players: add_player(name, state.players))
     }
     |> actor.continue()
   })
   |> actor.start
 }
 
-fn add_player(name: String, players: List(#(String, #(String, List(#(_, _)))))) {
-  let id =
-    bit_array.base64_encode(crypto.hash(crypto.Sha256, <<name:utf8>>), True)
-  case list.key_find(players, id) {
-    Error(_) -> [#(id, #(name, [])), ..players]
-    Ok(_) -> players
+fn add_player(name: String, players: List(String)) {
+  case list.contains(players, name) {
+    True -> players
+    False -> [name, ..players]
   }
-}
-
-fn fetch_players(
-  players: List(#(String, #(String, List(#(String, String))))),
-  subject: Subject(List(#(String, #(String, List(#(String, String)))))),
-) {
-  actor.send(subject, players)
 }
 
 // Reschedule a new ping request, and ask clients to ping us back
@@ -126,8 +116,8 @@ fn ping(state, registry, sender) {
     ..state,
     // Increase ping count with one,
     // filter away users with more than 4 missed pings first.
-    name_answers: list.map(
-      list.filter(state.name_answers, fn(user) {
+    live_answers: list.map(
+      list.filter(state.live_answers, fn(user) {
         let #(_, #(count, _)) = user
         count < 8
       }),
@@ -144,8 +134,8 @@ fn give_answer(state, registry, name, answer) {
   let state =
     State(
       ..state,
-      name_answers: list.key_set(
-        state.name_answers,
+      live_answers: list.key_set(
+        state.live_answers,
         name,
         #(0, case answer {
           Some("?") -> IDontKnow
@@ -156,7 +146,7 @@ fn give_answer(state, registry, name, answer) {
     )
   // Check if everyone has answered, if so, reveal answer.
   case
-    list.filter(state.name_answers, fn(x) {
+    list.filter(state.live_answers, fn(x) {
       case x {
         #(_, #(_, message.NotAnswered)) -> True
         _ -> False
@@ -182,7 +172,7 @@ fn give_name(state: State, registry, name) {
   // Add the new user to lobby, and broadcast lobby
   State(
     ..state,
-    name_answers: list.key_set(state.name_answers, name, #(0, NotAnswered)),
+    live_answers: list.key_set(state.live_answers, name, #(0, NotAnswered)),
   )
   |> broadcast_lobby(registry)
 }
@@ -192,7 +182,7 @@ fn answer_quiz(state, registry) {
   broadcast(registry, Answer)
   State(
     ..state,
-    name_answers: list.map(state.name_answers, fn(user) {
+    live_answers: list.map(state.live_answers, fn(user) {
       let #(name, #(count, _)) = user
       #(name, #(count, NotAnswered))
     }),
@@ -204,8 +194,7 @@ fn answer_quiz(state, registry) {
 }
 
 fn purge_players(state: State, registry) {
-  broadcast(registry, message.Exit)
-  State(1, [], [], True, None, state.state_handler)
+  State(1, [], [], [], True, None, state.state_handler)
   |> broadcast_lobby(registry)
 }
 
@@ -218,11 +207,11 @@ fn revel_answers(state, registry) {
 
 fn pong(state: State, name) {
   // Reset ping count
-  case list.key_find(state.name_answers, name) {
+  case list.key_find(state.live_answers, name) {
     Ok(#(_, answer)) ->
       State(
         ..state,
-        name_answers: list.key_set(state.name_answers, name, #(0, answer)),
+        live_answers: list.key_set(state.live_answers, name, #(0, answer)),
       )
     Error(_) -> state
   }
@@ -231,7 +220,7 @@ fn pong(state: State, name) {
 // Combine the active player answers with the answers given by the "single" player.
 fn combine_lists(state: State) {
   list.append(
-    list.map(state.name_answers, fn(name_answer) {
+    list.map(state.live_answers, fn(name_answer) {
       let #(name, #(ping_time, answer)) = name_answer
       User(name, ping_time, case answer, state.hide_answers {
         GivenAnswer(_), True -> HasAnswered
@@ -242,7 +231,7 @@ fn combine_lists(state: State) {
     // Second list require a bit more work Iterate over each payers answers,
     // creating user objects where question number match current question number.
     list.flat_map(state.single_answers, fn(name_answers) {
-      let #(_, #(name, answers)) = name_answers
+      let #(name, answers) = name_answers
       list.filter_map(answers, fn(number_answer) {
         let #(answer_number, answer) = number_answer
         case int.to_string(state.question_number) == answer_number {
@@ -254,6 +243,7 @@ fn combine_lists(state: State) {
               }),
             )
           }
+          // Not an error, it means "filter it out" in filter map
           False -> Error("ignore")
         }
       })

@@ -1,4 +1,4 @@
-import components.{click_cell_pair}
+import components.{click_cell}
 import gleam/dynamic/decode
 import gleam/int
 import gleam/list
@@ -16,18 +16,6 @@ import lustre/server_component
 // input fields.
 //
 // see: https://hexdocs.pm/lustre/lustre/element/keyed.html
-
-pub fn view_named_input(
-  name: String,
-  on_submit handle_keydown: fn(String, String) -> msg,
-) -> Element(msg) {
-  prompt_input(
-    "nameinput",
-    key_down(fn(a: String) { decode.success(handle_keydown(name, a)) }, fn() {
-      decode.failure(handle_keydown(name, ""), "")
-    }),
-  )
-}
 
 pub fn view_named_keyed_input(
   question: Int,
@@ -79,8 +67,8 @@ pub fn step_prompt(text: String, fetch: fn() -> Element(a)) {
 
 pub fn confirm_cells(
   title: Option(String),
-  accepted: #(String, String),
-  on_submit handle_button: fn(Option(#(String, String))) -> msg,
+  accepted: String,
+  on_submit handle_button: fn(Option(String)) -> msg,
 ) -> Element(msg) {
   html.div([], [
     html.div([attribute.class("participant-box")], [
@@ -91,30 +79,29 @@ pub fn confirm_cells(
         },
       ]),
     ]),
-    click_cell_pair(Some("Yes"), Some(accepted), False, handle_button),
-    click_cell_pair(Some("No"), None, False, handle_button),
+    click_cell(None, Some(accepted), "Yes", handle_button),
+    click_cell(None, None, "No", handle_button),
   ])
 }
 
 pub fn view_players(
-  players: List(#(String, String)),
-  handler: fn(Option(#(String, String))) -> msg,
+  players: List(String),
+  handler: fn(Option(String)) -> msg,
 ) {
   html.div([], [
     html.div(
       [],
       list.append(
         list.index_map(players, fn(item, index) {
-          click_cell_pair(Some(int.to_string(index)), Some(item), True, handler)
+          click_cell(Some(int.to_string(index)), Some(item), item, handler)
         }),
-        [click_cell_pair(Some("ENTER NEW PLAYER"), None, True, handler)],
+        [click_cell(None, None, "Enter new player", handler)],
       ),
     ),
-
   ])
 }
 
-pub fn input_new_player(handler: fn(Option(String)) -> msg) {
+pub fn input_new_player(handler: fn(String) -> msg) {
   html.div([attribute.class("participant-box")], [
     input_cell("Enter player name:", handler),
   ])
@@ -122,7 +109,7 @@ pub fn input_new_player(handler: fn(Option(String)) -> msg) {
 
 pub fn input_cell(
   text: String,
-  on_submit handle_keydown: fn(Option(String)) -> msg,
+  on_submit handle_keydown: fn(String) -> msg,
 ) -> Element(msg) {
   html.div([attribute.class("singles-grid")], [
     html.div([], [html.text(text)]),
@@ -133,8 +120,8 @@ pub fn input_cell(
         html.input([
           attribute.type_("text"),
           key_down(
-            fn(a: String) { decode.success(handle_keydown(Some(a))) },
-            fn() { decode.failure(handle_keydown(None), "") },
+            fn(a: String) { decode.success(handle_keydown(a)) },
+            fn() { decode.failure(handle_keydown(""), "") },
           ),
           attribute.autofocus(True),
         ]),

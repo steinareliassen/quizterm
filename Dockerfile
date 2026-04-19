@@ -27,7 +27,7 @@ FROM ghcr.io/gleam-lang/gleam:${GLEAM_VERSION}-erlang-alpine
 
 # Copy the compiled server code from the builder stage
 COPY --from=builder /quizterm/server/build/erlang-shipment /app
-COPY --from=builder /quizterm /qt
+
 # Set up the entrypoint
 WORKDIR /app
 RUN echo -e '#!/bin/sh\nexec ./entrypoint.sh "$@"' > ./start.sh \

@@ -59,8 +59,7 @@ fn handle_api(
         True ->
           case path {
             ["room"] -> handle_room(room_handler, req, json)
-            [..path] -> handle_admin_api(state_handler, req, path, json)
-            _ -> #(404, "bad api path", "Resource not found")
+            path -> handle_admin_api(state_handler, req, path, json)
           }
         False -> {
           #(401, "invalid api key", "unauthorized")

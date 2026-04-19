@@ -72,7 +72,7 @@ fn view_enter_pin() -> Element(Msg) {
 fn view_join_live(room: String, pin: String) -> Element(Msg) {
   element.fragment([
     server_component.element(
-      [server_component.route("/socket/live/" <> room <> "/" <> pin)],
+      [server_component.route("/socket/game/" <> room <> "/" <> pin)],
       [],
     ),
   ])
@@ -80,7 +80,7 @@ fn view_join_live(room: String, pin: String) -> Element(Msg) {
 
 fn view_join_single(room: String, pin: String) -> Element(Msg) {
   server_component.element(
-    [server_component.route("/socket/single/" <> room <> "/" <> pin)],
+    [server_component.route("/socket/game/" <> room <> "/" <> pin)],
     [],
   )
 }

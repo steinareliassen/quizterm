@@ -15,7 +15,7 @@ pub type NotifyServer {
   GiveName(name: String)
   GiveAnswer(name: String, answer: Option(String))
   GiveSingleAnswer(id: String, question: String, answer: String)
-  FetchPlayers(subject: Subject(List(#(String, #(String, List(#(String, String)))))))
+  FetchPlayers(subject: Subject(List(String)))
   AddPlayer(String)
 }
 
@@ -53,7 +53,6 @@ pub type NotifyClient {
   Lobby(question: String, names: List(User))
   Answer
   Await
-  Exit
 }
 
 pub type User {
