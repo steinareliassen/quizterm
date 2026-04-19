@@ -34,10 +34,10 @@ pub fn serve(
   }
 }
 
-pub fn serve_single(
+pub fn serve_game(
   request: Request(Connection),
   component: lustre.App(
-    #(List(#(String, String)), message.ClientsServer),
+    #(actor.Started(Subject(message.StateControl)), message.ClientsServer),
     model,
     msg,
   ),
@@ -48,13 +48,12 @@ pub fn serve_single(
 ) -> Response(ResponseData) {
   let start_args_opt =
     actor.call(roomhandler.data, 1000, message.FetchRoom(id, pin, _))
-  let answer_list = actor.call(statehandler.data, 1000, message.FetchQuestions)
 
   case start_args_opt {
     Some(start_args) ->
       mist.websocket(
         request:,
-        on_init: init_socket(_, component, #(answer_list, start_args)),
+        on_init: init_socket(_, component, #(statehandler, start_args)),
         handler: loop_socket,
         on_close: close_socket,
       )

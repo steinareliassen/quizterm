@@ -7,17 +7,15 @@ import lustre/element/html
 import lustre/event
 import lustre/server_component
 import model.{
-  type Model, type Msg, type Room, Empty, EnterPin, JoinLive, JoinSingle, KeyPin,
-  SelectGamestyle, SelectedRoom,
+  type Model, type Msg, type Room, Empty, EnterPin, JoinGame, KeyPin,
+  SelectedRoom,
 }
 
 pub fn view(model: Model) -> Element(Msg) {
   case model.state {
     Empty -> view_room_list(model.rooms)
     EnterPin(_, _) -> view_enter_pin()
-    SelectGamestyle(_, _) -> view_live_or_single()
-    JoinLive(room:, pin:) -> view_join_live(room, pin)
-    JoinSingle(room:, pin:) -> view_join_single(room, pin)
+    JoinGame(room, pin) -> view_game(room, pin)
   }
 }
 
@@ -69,26 +67,12 @@ fn view_enter_pin() -> Element(Msg) {
   ])
 }
 
-fn view_join_live(room: String, pin: String) -> Element(Msg) {
+fn view_game(room: String, pin: String) -> Element(Msg) {
   element.fragment([
     server_component.element(
       [server_component.route("/socket/game/" <> room <> "/" <> pin)],
       [],
     ),
-  ])
-}
-
-fn view_join_single(room: String, pin: String) -> Element(Msg) {
-  server_component.element(
-    [server_component.route("/socket/game/" <> room <> "/" <> pin)],
-    [],
-  )
-}
-
-fn view_live_or_single() -> Element(Msg) {
-  layout("Select type of play", None, [
-    click_cell(1, "Live Game", model.SelectedGamestyle),
-    click_cell(2, "Single Game", model.SelectedGamestyle),
   ])
 }
 
@@ -110,18 +94,6 @@ fn input_cell(
           attribute.autofocus(True),
         ]),
       ]),
-    ]),
-  ])
-}
-
-fn click_cell(
-  number: Int,
-  player: String,
-  on_click: fn(String) -> msg,
-) -> Element(msg) {
-  html.div([class("participant-login"), event.on_click(on_click(player))], [
-    html.div([class("participant-name")], [
-      html.text("► " <> "[#" <> int.to_string(number) <> "] " <> player),
     ]),
   ])
 }

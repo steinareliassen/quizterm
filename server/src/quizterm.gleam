@@ -41,7 +41,7 @@ pub fn main() {
             ["client.js"] -> serve_static("client.js")
             ["static", file] -> serve_static(file)
             ["socket", "game", id, pin] ->
-              sockethandler.serve(req, game.component(), id, pin, room_handler)
+              sockethandler.serve_game(req, game.component(), id, pin, room_handler,state_handler)
             ["socket", "control", id, pin] ->
               sockethandler.serve(
                 req,

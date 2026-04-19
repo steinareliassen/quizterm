@@ -14,3 +14,4 @@ group_registry = ">= 1.0.0 and < 2.0.0"
 wisp = ">= 2.2.1 and < 3.0.0"
 envoy = ">= 1.1.0 and < 2.0.0"
 shared = { path = "../shared" }
+storail = ">= 3.2.0 and < 4.0.0"

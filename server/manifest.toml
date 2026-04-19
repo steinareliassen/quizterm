@@ -24,6 +24,7 @@ packages = [
   { name = "platform", version = "1.0.0", build_tools = ["gleam"], requirements = [], otp_app = "platform", source = "hex", outer_checksum = "8339420A95AD89AAC0F82F4C3DB8DD401041742D6C3F46132A8739F6AEB75391" },
   { name = "shared", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_json", "gleam_stdlib", "lustre"], source = "local", path = "../shared" },
   { name = "simplifile", version = "2.4.0", build_tools = ["gleam"], requirements = ["filepath", "gleam_stdlib"], otp_app = "simplifile", source = "hex", outer_checksum = "7C18AFA4FED0B4CE1FA5B0B4BAC1FA1744427054EA993565F6F3F82E5453170D" },
+  { name = "storail", version = "3.2.0", build_tools = ["gleam"], requirements = ["directories", "filepath", "gleam_crypto", "gleam_json", "gleam_stdlib", "simplifile"], otp_app = "storail", source = "hex", outer_checksum = "0C8ACEEE01259514C3D4F66E811B9F6F9592C7A6EBC073A58E4A6FE97A7AE505" },
   { name = "wisp", version = "2.2.2", build_tools = ["gleam"], requirements = ["directories", "exception", "filepath", "gleam_crypto", "gleam_erlang", "gleam_http", "gleam_json", "gleam_stdlib", "houdini", "logging", "marceau", "mist", "simplifile"], otp_app = "wisp", source = "hex", outer_checksum = "5FF5F1E288C3437252ABB93D8F9CF42FF652CE7AD54480CFE736038DC09C4F22" },
 ]
 
@@ -39,4 +40,5 @@ group_registry = { version = ">= 1.0.0 and < 2.0.0" }
 lustre = { version = ">= 5.3.5 and < 6.0.0" }
 mist = { version = ">= 6.0.0 and < 7.0.0" }
 shared = { path = "../shared" }
+storail = { version = ">= 3.2.0 and < 4.0.0" }
 wisp = { version = ">= 2.2.1 and < 3.0.0" }

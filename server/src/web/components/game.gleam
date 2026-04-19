@@ -10,13 +10,16 @@ import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html
 import lustre/event
-import lustre/server_component
 import shared/message.{type ClientsServer, type NotifyClient, type NotifyServer}
 import web/components/answerlist
 import web/components/card
 import web/components/shared
 
-pub fn component() -> lustre.App(ClientsServer, Game, GameMsg) {
+pub fn component() -> lustre.App(
+  #(actor.Started(Subject(message.StateControl)), ClientsServer),
+  Game,
+  GameMsg,
+) {
   lustre.application(init, update, view)
 }
 
@@ -26,7 +29,8 @@ pub opaque type Model {
     players: List(String),
     player: Option(String),
     registry: GroupRegistry(NotifyClient),
-    handler: Started(Subject(NotifyServer)),
+    player_handler: Started(Subject(NotifyServer)),
+    state_handler: actor.Started(Subject(message.StateControl)),
   )
 }
 
@@ -56,7 +60,10 @@ type Msg {
   PickedGame(String)
 }
 
-fn init(client_server: ClientsServer) -> #(Game, Effect(GameMsg)) {
+fn init(
+  handlers: #(actor.Started(Subject(message.StateControl)), ClientsServer),
+) -> #(Game, Effect(GameMsg)) {
+  let #(state_handler, client_server) = handlers
   let #(registry, player_handler) = client_server
   #(
     PreGame(Model(
@@ -64,7 +71,8 @@ fn init(client_server: ClientsServer) -> #(Game, Effect(GameMsg)) {
       actor.call(player_handler.data, 1000, message.FetchPlayers),
       None,
       registry,
-      player_handler,
+      player_handler:,
+      state_handler:,
     )),
     effect.none(),
   )
@@ -98,7 +106,7 @@ fn update_pregame(model: Model, msg: Msg) {
       effect.none(),
     )
     AcceptPlayer(Some(player)) -> {
-      actor.send(model.handler.data, message.AddPlayer(player))
+      actor.send(model.player_handler.data, message.AddPlayer(player))
       #(
         PreGame(Model(..model, player: Some(player), state: PickGametype)),
         effect.none(),
@@ -113,16 +121,24 @@ fn update_pregame(model: Model, msg: Msg) {
         Some(name) ->
           case game_style {
             "Live Game" -> #(
-              LiveGame(card.init(name, #(model.registry, model.handler))),
+              LiveGame(card.init(name,#(model.registry, model.player_handler))),
               effect.map(
                 card.subscribe(model.registry, card.get_subscription_hander()),
                 fn(a) { LiveGameMsg(a) },
               ),
             )
-            _ -> #(
-              SingleGame(answerlist.init(name, model.handler)),
-              effect.none(),
-            )
+            _ -> {
+              let answer_list =
+                actor.call(
+                  model.state_handler.data,
+                  1000,
+                  message.FetchQuestions,
+                )
+              #(
+                SingleGame(answerlist.init(name, answer_list, model.player_handler)),
+                effect.none(),
+              )
+            }
           }
         None -> #(PreGame(Model(..model, state: EnterPlayer)), effect.none())
       }

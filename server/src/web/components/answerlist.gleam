@@ -28,12 +28,16 @@ pub opaque type Msg {
   GiveAnswer(question: #(String, String), answer: Option(String))
 }
 
-pub fn init(name: String, handler: Started(Subject(message.NotifyServer))) {
+pub fn init(
+  name: String,
+  answer_list: List(#(String, String)),
+  handler: Started(Subject(message.NotifyServer)),
+) {
   // Convert a "question number -> question text" array to
   // "question number" -> #("question text", "users answer" array
   // with blank user answers.
   let initial_array =
-    list.map([#("a", "a")], fn(x) {
+    list.map(answer_list, fn(x) {
       let #(a, b) = x
       #(a, #(b, ""))
     })

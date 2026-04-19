@@ -1,16 +1,19 @@
 import backend/playerhandler as player_handler
 import gleam/bit_array
 import gleam/crypto
+import gleam/dynamic/decode
 import gleam/erlang/process.{type Subject}
+import gleam/json
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/otp/actor.{type Started}
 import gleam/string
 import group_registry
 import shared/message.{
-  type Room, type RoomControl, type StateControl, CreateRoom, FetchRoom,
-  FetchRooms, PingTime, Room, RoomInfo,
+  type Room, type RoomControl, type RoomInfo, type StateControl, CreateRoom,
+  FetchRoom, FetchRooms, PingTime, Room, RoomInfo,
 }
+import storail
 
 // Room handler, actor to hold the rooms for the different teams playing.
 //
@@ -22,33 +25,74 @@ import shared/message.{
 // FetchRooms(<subject>) - Fetch list of rooms.
 
 type Rooms {
-  Rooms(rooms: List(#(String, Room)))
+  Rooms(
+    store: storail.Collection(#(String, RoomInfo)),
+    rooms: List(#(String, Room)),
+  )
 }
 
 pub fn initialize(state_handler: Started(Subject(StateControl))) {
-  actor.new(Rooms([]))
+  let config = storail.Config(storage_path: "tmp/storage")
+  let encode_room = fn(id_room: #(String, RoomInfo)) {
+    let #(id, room) = id_room
+    json.object([
+      #("id", json.string(id)),
+      #("name", json.string(room.name)),
+      #("pin_enc", json.string(room.pin_enc)),
+    ])
+  }
+  let decode_room = {
+    use id <- decode.field("id", decode.string)
+    use pin_enc <- decode.field("pin_enc", decode.string)
+    use name <- decode.field("name", decode.string)
+    decode.success(#(id, RoomInfo(name, pin_enc)))
+  }
+
+  // Define a collection for a data type in your application.
+  let store =
+    storail.Collection(
+      name: "rooms",
+      to_json: encode_room,
+      decoder: decode_room,
+      config:,
+    )
+
+  let room_infos = case storail.list(store, []) {
+    Error(_) -> {
+      echo "Something wrong!"
+      []
+    }
+    Ok(roomlist) -> {
+      list.filter_map(roomlist, fn(id: String) {
+        let key = storail.key(store, id)
+        storail.read(key)
+      })
+    }
+  }
+
+  let rooms =
+    list.map(room_infos, fn(info) {
+      let #(id, room) = info
+      #(id, create_room(state_handler, id, room.name, room.pin_enc))
+    })
+  actor.new(Rooms(store, rooms))
   |> actor.on_message(fn(state: Rooms, message: RoomControl) {
     case message {
       CreateRoom(id:, room: RoomInfo(name, pin_enc)) -> {
+        let key = storail.key(state.store, id)
         case
           // Does room already exist?
-          state.rooms |> list.key_find(id)
+          storail.read(key)
         {
           Error(_) -> {
             // Prevent overflowing server with rooms, set max 50
             case list.length(state.rooms) < 50 {
               True -> {
                 // Room not found (not really an error case), create it.
-                let assert Ok(actor.Started(data: registry, ..)) =
-                  group_registry.start(process.new_name("quiz-registry" <> id))
-                let assert Ok(actor) =
-                  player_handler.initialize(state_handler, registry)
-                process.send_after(actor.data, 1000, PingTime(actor.data))
-                Rooms(rooms: [
-                  #(
-                    id,
-                    Room(pin_enc: pin_enc, name:, actors: #(registry, actor)),
-                  ),
+                let assert Ok(_) =
+                  storail.write(key, #(id, RoomInfo(name:, pin_enc:)))
+                Rooms(..state, rooms: [
+                  #(id, create_room(state_handler, id, name, pin_enc)),
                   ..state.rooms
                 ])
               }
@@ -56,7 +100,10 @@ pub fn initialize(state_handler: Started(Subject(StateControl))) {
             }
           }
           // Room exists, do nothing.
-          Ok(_) -> state
+          Ok(_) -> {
+            echo "Attenpting to create existing room, failing"
+            state
+          }
         }
       }
       FetchRoom(id:, pin:, subject:) -> {
@@ -93,4 +140,17 @@ pub fn initialize(state_handler: Started(Subject(StateControl))) {
     |> actor.continue()
   })
   |> actor.start
+}
+
+fn create_room(
+  state_handler: Started(Subject(StateControl)),
+  id: String,
+  name: String,
+  pin_enc: String,
+) -> Room {
+  let assert Ok(actor.Started(data: registry, ..)) =
+    group_registry.start(process.new_name("quiz-registry" <> id))
+  let assert Ok(actor) = player_handler.initialize(state_handler, registry)
+  process.send_after(actor.data, 1000, PingTime(actor.data))
+  Room(pin_enc: pin_enc, name:, actors: #(registry, actor))
 }

@@ -193,6 +193,8 @@ pub fn view(model: Model) -> Element(Msg) {
           }
         },
       ),
+      // TODO:
+      // "/socket/control/" <> model.team_id <> "/" <> model.team_pin,
       server_component.element(
         [server_component.route("/socket/control/TMA/PINA")],
         [],
