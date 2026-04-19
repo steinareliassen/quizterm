@@ -1,0 +1,10 @@
+# Use this to build & run with gleam / beam installed in correct versions
+# Build and run with docker (see readme) to avoid needing to install the env needed
+# Running with this encoded API key will work with API key set to "test",
+# and you can run api-test/init.sh to fill with initial test values after starting quizterm
+
+export SHAED_API_KEY=9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08
+export QTERM_SECRET=AVerySecretSentence
+
+cd client; gleam run -m lustre/dev build --outdir=../server/priv/static; cd ..
+cd server; gleam run

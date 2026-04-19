@@ -7,7 +7,7 @@ import lustre
 import lustre/effect.{type Effect}
 import model.{
   type Model, type Msg, type Room, Empty, EnterPin, Initialize, KeyPin, Model,
-  Room, SelectedGamestyle, SelectedRoom,
+  Room, SelectedRoom,
 }
 import plinth/browser/document
 import plinth/browser/element as plinth_element
@@ -53,7 +53,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       case model.state {
         EnterPin(room, _) -> #(
           Model(..model, state: case string.length(pin) < 4 {
-            False -> model.SelectGamestyle(room:, pin:)
+            False -> model.JoinGame(room:, pin:)
             True -> EnterPin(room:, pin:)
           }),
           effect.none(),
@@ -62,24 +62,6 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           init(#(
             model.rooms,
             Some("(fail: enterpin) Invalid state, starting over"),
-          ))
-      }
-    }
-    SelectedGamestyle(style) -> {
-      case model.state {
-        model.SelectGamestyle(room:, pin:) -> {
-          #(
-            Model(..model, state: case style {
-              "Single Game" -> model.JoinSingle(room:, pin:)
-              _ -> model.JoinLive(room:, pin:)
-            }),
-            effect.none(),
-          )
-        }
-        _ ->
-          init(#(
-            model.rooms,
-            Some("(fail: selectgamestyle) Invalid state, starting over"),
           ))
       }
     }
