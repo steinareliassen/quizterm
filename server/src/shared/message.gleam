@@ -16,6 +16,8 @@ pub type NotifyServer {
   GiveAnswer(name: String, answer: Option(String))
   GiveSingleAnswer(id: String, question: String, answer: String)
   FetchPlayers(subject: Subject(List(String)))
+  FetchAllAnswers(subject: Subject(List(#(Int, List(#(String, String))))))
+  FetchPlayerAnswers(player: String, subject: Subject(List(#(String, String))))
   AddPlayer(String)
 }
 

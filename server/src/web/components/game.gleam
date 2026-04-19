@@ -45,6 +45,7 @@ type State {
   PickGametype
   EnterPlayer
   AskOkPlayer(name: String)
+  ListAnswers
 }
 
 pub opaque type GameMsg {
@@ -121,13 +122,13 @@ fn update_pregame(model: Model, msg: Msg) {
         Some(name) ->
           case game_style {
             "Live Game" -> #(
-              LiveGame(card.init(name,#(model.registry, model.player_handler))),
+              LiveGame(card.init(name, #(model.registry, model.player_handler))),
               effect.map(
                 card.subscribe(model.registry, card.get_subscription_hander()),
                 fn(a) { LiveGameMsg(a) },
               ),
             )
-            _ -> {
+            "Single Game" -> {
               let answer_list =
                 actor.call(
                   model.state_handler.data,
@@ -135,10 +136,15 @@ fn update_pregame(model: Model, msg: Msg) {
                   message.FetchQuestions,
                 )
               #(
-                SingleGame(answerlist.init(name, answer_list, model.player_handler)),
+                SingleGame(answerlist.init(
+                  name,
+                  answer_list,
+                  model.player_handler,
+                )),
                 effect.none(),
               )
             }
+            _ -> #(PreGame(Model(..model, state: ListAnswers)), effect.none())
           }
         None -> #(PreGame(Model(..model, state: EnterPlayer)), effect.none())
       }
@@ -200,7 +206,34 @@ fn view_pregame(model: Model) -> Element(Msg) {
           html.div([], [
             click_cell(1, "Live Game", PickedGame),
             click_cell(2, "Single Game", PickedGame),
+            click_cell(
+              3,
+              "View (non-live game) answers from players in room",
+              PickedGame,
+            ),
           ])
+        }
+        ListAnswers -> {
+          html.div(
+            [],
+            list.map(
+              actor.call(
+                model.player_handler.data,
+                2000,
+                message.FetchAllAnswers,
+              ),
+              fn(line) {
+                let #(num, num_list) = line
+                html.div([], [
+                  html.text(int.to_string(num)),
+                  ..list.map(num_list, fn(num_line) {
+                    let #(player, answer) = num_line
+                    html.div([], [html.text(player <> " : " <> answer)])
+                  })
+                ])
+              },
+            ),
+          )
         }
       },
     ]),

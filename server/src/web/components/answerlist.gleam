@@ -33,13 +33,24 @@ pub fn init(
   answer_list: List(#(String, String)),
   handler: Started(Subject(message.NotifyServer)),
 ) {
+  let previous_answers =
+    actor.call(handler.data, 2000, message.FetchPlayerAnswers(name, _))
+  list.map(previous_answers, fn(a) {
+  
+})
   // Convert a "question number -> question text" array to
   // "question number" -> #("question text", "users answer" array
   // with blank user answers.
   let initial_array =
     list.map(answer_list, fn(x) {
       let #(a, b) = x
-      #(a, #(b, ""))
+      #(
+        a,
+        #(b, case list.key_find(previous_answers, a) {
+          Error(_) -> ""
+          Ok(previous_answer) -> previous_answer
+        }),
+      )
     })
 
   Model(name, PickQuestion, initial_array, handler)
@@ -52,6 +63,7 @@ pub fn update(model: Model, msg: Msg) {
     }
     GiveAnswer(question, Some(answer)) -> {
       let #(question, _) = question
+      echo "question " <> question
       actor.send(
         model.handler.data,
         message.GiveSingleAnswer(id: model.player_name, question:, answer:),

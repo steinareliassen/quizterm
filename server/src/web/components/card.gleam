@@ -13,6 +13,7 @@ import shared/message.{type NotifyClient, type NotifyServer, type User, User}
 import web/components/shared.{step_prompt, view_input}
 
 type State {
+  Init
   Wait
   Answer
 }
@@ -29,8 +30,7 @@ pub opaque type Model {
 
 pub fn init(name: String, handlers: message.ClientsServer) -> Model {
   let #(registry, handler) = handlers
-  actor.send(handler.data, message.GiveName(name:))
-  Model(Wait, name, #("", []), registry, handler)
+  Model(Init, name, #("", []), registry, handler)
 }
 
 pub fn get_subscription_hander() {
@@ -101,6 +101,12 @@ pub fn view(model: Model) -> Element(Msg) {
     ]),
 
     case model.state {
+      Init -> {
+        actor.send(model.handler.data, message.GiveName(model.name))
+        html.div([attribute.class("terminal-prompt")], [
+          html.h3([], [html.text("Registered user, waiting in lobby")]),
+        ])
+      }
       Answer -> {
         html.div([attribute.class("terminal-prompt")], [
           step_prompt(

@@ -72,14 +72,16 @@ pub fn initialize(
           ..state,
           single_answers: case list.key_find(state.single_answers, name) {
             Ok(list) -> {
-              list.key_set(
-                state.single_answers,
-                name,
-                list.key_set(list, question, answer),
-              )
+              let listing =
+                list.key_set(
+                  state.single_answers,
+                  name,
+                  list.key_set(list, question, answer),
+                )
+              listing
             }
             Error(_) -> {
-              state.single_answers
+              [#(name, [#(question, answer)]), ..state.single_answers]
             }
           },
         )
@@ -93,8 +95,39 @@ pub fn initialize(
         actor.send(subject, state.players)
         state
       }
+
       message.AddPlayer(name) ->
         State(..state, players: add_player(name, state.players))
+      message.FetchAllAnswers(subject:) -> {
+        let listish =
+          list.map(list.range(from: 1, to: 14), fn(a) {
+            #(
+              a,
+              list.flat_map(state.single_answers, fn(name_answers) {
+                let #(name, answers) = name_answers
+                list.filter_map(answers, fn(number_answer) {
+                  let #(answer_number, answer) = number_answer
+                  case int.to_string(a) == answer_number {
+                    True -> {
+                      Ok(#(name, answer))
+                    }
+                    // Not an error, it means "filter it out" in filter map
+                    False -> Error("ignore")
+                  }
+                })
+              }),
+            )
+          })
+        actor.send(subject, listish)
+        state
+      }
+      message.FetchPlayerAnswers(player:, subject:) -> {
+        actor.send(subject, case list.key_find(state.single_answers, player) {
+          Ok(list) -> list
+          Error(_) -> []
+        })
+        state
+      }
     }
     |> actor.continue()
   })
@@ -111,7 +144,7 @@ fn add_player(name: String, players: List(String)) {
 // Reschedule a new ping request, and ask clients to ping us back
 fn ping(state, registry, sender) {
   broadcast(registry, message.Ping)
-  process.send_after(sender, 500, message.PingTime(sender))
+  process.send_after(sender, 2000, message.PingTime(sender))
   State(
     ..state,
     // Increase ping count with one,
@@ -119,7 +152,7 @@ fn ping(state, registry, sender) {
     live_answers: list.map(
       list.filter(state.live_answers, fn(user) {
         let #(_, #(count, _)) = user
-        count < 8
+        count < 4
       }),
       fn(user) {
         let #(name, #(count, stat)) = user
@@ -144,7 +177,7 @@ fn give_answer(state, registry, name, answer) {
         }),
       ),
     )
-  // Check if everyone has answered, if so, reveal answer.
+  // Check if everyone has answered, if s/o, reveal answer.
   case
     list.filter(state.live_answers, fn(x) {
       case x {
