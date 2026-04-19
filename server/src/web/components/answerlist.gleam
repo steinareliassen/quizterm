@@ -35,12 +35,9 @@ pub fn init(
 ) {
   let previous_answers =
     actor.call(handler.data, 2000, message.FetchPlayerAnswers(name, _))
-  list.map(previous_answers, fn(a) {
-  
-})
   // Convert a "question number -> question text" array to
   // "question number" -> #("question text", "users answer" array
-  // with blank user answers.
+  // with blank user answers. Add previous answers into list.
   let initial_array =
     list.map(answer_list, fn(x) {
       let #(a, b) = x

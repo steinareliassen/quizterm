@@ -25,12 +25,19 @@ pub opaque type Model {
     lobby: #(String, List(User)),
     registry: GroupRegistry(NotifyClient),
     handler: Started(Subject(NotifyServer)),
+    team_id: String,
+    team_pin: String,
   )
 }
 
-pub fn init(name: String, handlers: message.ClientsServer) -> Model {
+pub fn init(
+  name: String,
+  handlers: message.ClientsServer,
+  team_id: String,
+  team_pin: String,
+) -> Model {
   let #(registry, handler) = handlers
-  Model(Init, name, #("", []), registry, handler)
+  Model(Init, name, #("", []), registry, handler, team_id, team_pin)
 }
 
 pub fn get_subscription_hander() {
@@ -199,10 +206,12 @@ pub fn view(model: Model) -> Element(Msg) {
           }
         },
       ),
-      // TODO:
-      // "/socket/control/" <> model.team_id <> "/" <> model.team_pin,
       server_component.element(
-        [server_component.route("/socket/control/TMA/PINA")],
+        [
+          server_component.route(
+            "/socket/control/" <> model.team_id <> "/" <> model.team_pin,
+          ),
+        ],
         [],
       ),
     ]),

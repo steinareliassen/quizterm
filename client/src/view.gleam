@@ -98,7 +98,6 @@ fn input_cell(
   ])
 }
 
-// TODO: merge with shared.click_cell
 fn room_cell(
   number: Int,
   room: Room,
@@ -106,7 +105,7 @@ fn room_cell(
 ) -> Element(msg) {
   html.div([class("participant-login"), event.on_click(on_click(room.id))], [
     html.div([class("participant-name")], [
-      html.text("► " <> "[#" <> int.to_string(number) <> "] Team " <> room.name),
+      html.text("► " <> "[#" <> int.to_string(number) <> "] " <> room.name),
     ]),
   ])
 }

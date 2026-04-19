@@ -16,7 +16,7 @@ import web/components/card
 import web/components/shared
 
 pub fn component() -> lustre.App(
-  #(actor.Started(Subject(message.StateControl)), ClientsServer),
+  #(String, String, actor.Started(Subject(message.StateControl)), ClientsServer),
   Game,
   GameMsg,
 ) {
@@ -31,6 +31,8 @@ pub opaque type Model {
     registry: GroupRegistry(NotifyClient),
     player_handler: Started(Subject(NotifyServer)),
     state_handler: actor.Started(Subject(message.StateControl)),
+    team_id: String,
+    team_pin: String,
   )
 }
 
@@ -62,9 +64,14 @@ type Msg {
 }
 
 fn init(
-  handlers: #(actor.Started(Subject(message.StateControl)), ClientsServer),
+  handlers: #(
+    String,
+    String,
+    actor.Started(Subject(message.StateControl)),
+    ClientsServer,
+  ),
 ) -> #(Game, Effect(GameMsg)) {
-  let #(state_handler, client_server) = handlers
+  let #(team_id, team_pin, state_handler, client_server) = handlers
   let #(registry, player_handler) = client_server
   #(
     PreGame(Model(
@@ -74,6 +81,8 @@ fn init(
       registry,
       player_handler:,
       state_handler:,
+      team_id:,
+      team_pin:,
     )),
     effect.none(),
   )
@@ -122,7 +131,12 @@ fn update_pregame(model: Model, msg: Msg) {
         Some(name) ->
           case game_style {
             "Live Game" -> #(
-              LiveGame(card.init(name, #(model.registry, model.player_handler))),
+              LiveGame(card.init(
+                name,
+                #(model.registry, model.player_handler),
+                model.team_id,
+                model.team_pin,
+              )),
               effect.map(
                 card.subscribe(model.registry, card.get_subscription_hander()),
                 fn(a) { LiveGameMsg(a) },
