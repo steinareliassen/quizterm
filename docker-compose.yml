@@ -6,3 +6,8 @@ services:
       - "1234:1234"
     env_file:
       - quizterm.env
+    volumes:
+      - quiz-data:/tmp/data
+
+volumes:
+  quiz-data:

@@ -32,7 +32,8 @@ type Rooms {
 }
 
 pub fn initialize(state_handler: Started(Subject(StateControl))) {
-  let config = storail.Config(storage_path: "tmp/storage")
+  let config = storail.Config(storage_path: "/tmp/data/storage")
+
   let encode_room = fn(id_room: #(String, RoomInfo)) {
     let #(id, room) = id_room
     json.object([
