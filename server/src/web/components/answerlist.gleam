@@ -1,4 +1,4 @@
-import components.{click_cell_pair}
+import components.{click_cell}
 import gleam/dynamic/decode
 import gleam/erlang/process.{type Subject}
 import gleam/int
@@ -132,11 +132,11 @@ fn view_questions(answers: List(#(String, #(String, String)))) {
         let #(number, #(question, answer)) = content
         case string.length(answer) > 0 {
           False ->
-            click_cell_pair(
-              Some(number <> " " <> answer),
+            click_cell(
               Some(#(number, question)),
-              True,
               PickedQuestion,
+              Some("[#"<> number <> "]" <> answer),
+              Some(question),
             )
           True ->
             question_cell(

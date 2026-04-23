@@ -79,8 +79,8 @@ pub fn confirm_cells(
         },
       ]),
     ]),
-    click_cell(None, Some(accepted), "Yes", handle_button),
-    click_cell(None, None, "No", handle_button),
+    click_cell(Some(accepted), handle_button, Some("[# Yes]"),None),
+    click_cell(None, handle_button, Some("[# No]"), None),
   ])
 }
 
@@ -93,9 +93,9 @@ pub fn view_players(
       [],
       list.append(
         list.index_map(players, fn(item, index) {
-          click_cell(Some(int.to_string(index)), Some(item), item, handler)
+          click_cell(Some(item), handler, Some("[ #"<>int.to_string(index)<> " ]"), Some(item))
         }),
-        [click_cell(None, None, "Enter new player", handler)],
+        [click_cell(None, handler,Some("[ # NEW ]"), Some("Enter new player"))],
       ),
     ),
   ])
