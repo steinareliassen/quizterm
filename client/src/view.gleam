@@ -1,3 +1,4 @@
+import components.{click_cell, terminal_header}
 import gleam/int
 import gleam/list
 import gleam/option.{None, Some}
@@ -21,23 +22,17 @@ pub fn view(model: Model) -> Element(Msg) {
 
 fn layout(header: String, ohno: option.Option(String), body: List(Element(Msg))) {
   html.div([], [
-    html.div([class("terminal-header")], [
-      html.div([class("terminal-status")], [
-        html.span([class("status-blink")], [html.text("●")]),
-        html.div([], [
-          html.text(" SYSTEM READY"),
-        ]),
+    terminal_header(
+      element.fragment([
         html.div([], [
           case ohno {
             None -> element.none()
             Some(x) -> html.h3([], [html.text("Fail: " <> x)])
           },
         ]),
-        html.span([class("ml-8")], [
-          html.text("<< Please Log On to use QuizTerm. >>"),
-        ]),
+        html.text("<< Please Log On to use QuizTerm. >>"),
       ]),
-    ]),
+    ),
     html.div([attribute.class("terminal-section")], [
       html.div([attribute.class("terminal-label mb-4")], [
         html.text(header),
@@ -52,7 +47,12 @@ fn view_room_list(items: List(Room)) -> Element(Msg) {
     [] -> [html.text("No rooms exist, nowhere to play! (ohno!)")]
     _ -> {
       list.index_map(items, fn(item, index) {
-        room_cell(index, item, SelectedRoom)
+        click_cell(
+          item.id,
+          SelectedRoom,
+          Some("[#" <> int.to_string(index) <> "]" <> item.name),
+          None,
+        )
       })
     }
   })
@@ -94,18 +94,6 @@ fn input_cell(
           attribute.autofocus(True),
         ]),
       ]),
-    ]),
-  ])
-}
-
-fn room_cell(
-  number: Int,
-  room: Room,
-  on_click: fn(String) -> msg,
-) -> Element(msg) {
-  html.div([class("participant-login"), event.on_click(on_click(room.id))], [
-    html.div([class("participant-name")], [
-      html.text("► " <> "[#" <> int.to_string(number) <> "] " <> room.name),
     ]),
   ])
 }

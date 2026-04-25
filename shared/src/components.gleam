@@ -1,8 +1,18 @@
 import gleam/option.{type Option, None, Some}
 import lustre/attribute.{class}
 import lustre/element.{type Element}
-import lustre/element/html
+import lustre/element/html.{text}
 import lustre/event
+
+pub fn terminal_header(element: Element(a)) -> Element(a) {
+  html.div([class("terminal-header")], [
+    html.div([class("terminal-status")], [
+      html.span([class("status-blink")], [html.text("●")]),
+      html.text(" SYSTEM READY"),
+      html.span([class("ml-8")], [element]),
+    ]),
+  ])
+}
 
 pub fn click_cell(
   id: id,
@@ -10,21 +20,70 @@ pub fn click_cell(
   tag: Option(String),
   value: Option(String),
 ) -> Element(msg) {
-  html.div([class("participant-login"), event.on_click(on_click(id))], [
-    html.div([class("participant-name")], [
-      html.div([], [
-        html.text(
-          "► "
-          <> case tag {
-            Some(tag) -> tag
-            None -> ""
-          },
-        ),
-      ]),
-      case value {
-        Some(value) -> html.text(value)
-        None -> element.none()
-      },
-    ]),
-  ])
+  [
+    tag |> maybe_tag |> arr |> div_styled(Name),
+    value |> maybe_text |> arr |> div_styled(Answer),
+  ]
+  |> div_styled_click(Login, id, on_click)
+}
+
+pub fn content_cell(
+  tag: String,
+  value: Option(String),
+  style: Style,
+) -> Element(a) {
+  [
+    tag |> text |> arr |> div_styled(Name),
+    value |> maybe_text |> arr |> div_styled(Answer),
+  ]
+  |> div_styled(style)
+}
+
+fn maybe_tag(value: Option(String)) -> Element(a) {
+  case value {
+    Some(value) -> { "► [" <> value <> "]" } |> text
+    None -> element.none()
+  }
+}
+
+fn maybe_text(value: Option(String)) -> Element(a) {
+  case value {
+    Some(value) -> value |> text
+    None -> element.none()
+  }
+}
+
+fn div_styled(elements: List(Element(a)), style: Style) {
+  html.div([style_class(style)], elements)
+}
+
+fn div_styled_click(
+  elements: List(Element(a)),
+  style: Style,
+  arg: arg,
+  click: fn(arg) -> a,
+) -> Element(a) {
+  html.div([style_class(style), event.on_click(click(arg))], elements)
+}
+
+fn arr(value: Element(a)) {
+  [value]
+}
+
+pub type Style {
+  Login
+  Box
+  Name
+  Answer
+  Disconnect
+}
+
+fn style_class(style: Style) {
+  class(case style {
+    Login -> "participant-login"
+    Box -> "participant-box"
+    Name -> "participant-name"
+    Answer -> "participant-answer"
+    Disconnect -> "participant-disconnect"
+  })
 }

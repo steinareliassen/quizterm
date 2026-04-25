@@ -1,7 +1,6 @@
-import components.{click_cell}
+import components.{click_cell, content_cell, terminal_header}
 import gleam/dynamic/decode
 import gleam/erlang/process.{type Subject}
-import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/otp/actor.{type Started}
@@ -86,19 +85,13 @@ pub fn update(model: Model, msg: Msg) {
 
 pub fn view(model: Model) -> Element(Msg) {
   element.fragment([
-    html.div([class("terminal-header")], [
-      html.div([class("terminal-status")], [
-        html.span([class("status-blink")], [html.text("●")]),
-        html.text(" SYSTEM READY"),
-        html.div([class("ml-8")], [
-          case model.state {
-            PickQuestion -> html.text("STATUS: Pick question to answer")
-            GiveAnswer(_, _) -> html.text("STATUS: Give your answer")
-            _ -> html.text("STATUS: Waiting for next question")
-          },
-        ]),
-      ]),
-    ]),
+    case model.state {
+      PickQuestion -> html.text("STATUS: Pick question to answer")
+      GiveAnswer(_, _) -> html.text("STATUS: Give your answer")
+      _ -> html.text("STATUS: Waiting for next question")
+    }
+      |> terminal_header,
+
     html.div([attribute.class("terminal-section")], [
       html.div([attribute.class("terminal-label mb-4")], [
         html.text("[ACTIVE TRANSMISSIONS]"),
@@ -108,7 +101,8 @@ pub fn view(model: Model) -> Element(Msg) {
       case model.state {
         PickQuestion -> view_questions(model.answers)
         GiveAnswer(answer, None) -> input_new_answer(answer)
-        _ -> content_cell(#(10, #("Answer", "Answer question")))
+        _ ->
+          content_cell("►  [ Answer ]", Some("Answer question"), components.Box)
       },
     ]),
   ])
@@ -117,10 +111,10 @@ pub fn view(model: Model) -> Element(Msg) {
 fn input_new_answer(question: #(String, String)) {
   let #(question_id, question_text) = question
   html.div([class("participant-box")], [
-    input_cell("Answer [" <> question_id <> "] " <> question_text, GiveAnswer(
-      question,
-      _,
-    )),
+    input_cell(
+      " ► Answer [" <> question_id <> "] " <> question_text,
+      GiveAnswer(question, _),
+    ),
   ])
 }
 
@@ -135,7 +129,7 @@ fn view_questions(answers: List(#(String, #(String, String)))) {
             click_cell(
               Some(#(number, question)),
               PickedQuestion,
-              Some("[#"<> number <> "]" <> answer),
+              Some("[#" <> number <> "]" <> answer),
               Some(question),
             )
           True ->
@@ -156,28 +150,11 @@ fn view_questions(answers: List(#(String, #(String, String)))) {
   ])
 }
 
-fn content_cell(answer: #(Int, #(String, String))) -> Element(Msg) {
-  let #(question, #(question_text, answer)) = answer
-  html.div(
-    [
-      class("participant-box"),
-    ],
-    [
-      html.div([class("participant-name")], [
-        html.text("► " <> int.to_string(question) <> " " <> question_text),
-      ]),
-      html.div([class("participant-answer")], [
-        html.text(answer),
-      ]),
-    ],
-  )
-}
-
 fn input_cell(
   text: String,
   on_submit handle_keydown: fn(Option(String)) -> msg,
 ) -> Element(msg) {
-  html.div([attribute.class("singles-grid")], [
+  html.div([], [
     html.div([], [html.text(text)]),
     keyed.div([], [
       #("inputheader", html.text("$>")),
