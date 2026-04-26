@@ -1,3 +1,4 @@
+import components.{Answer, Box, Name, click_cell, content_cell, div_styled}
 import gleam/erlang/process.{type Subject}
 import gleam/int
 import gleam/list
@@ -9,7 +10,6 @@ import lustre/attribute.{class}
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html
-import lustre/event
 import shared/message.{type ClientsServer, type NotifyClient, type NotifyServer}
 import web/components/answerlist
 import web/components/card
@@ -210,21 +210,18 @@ fn view_pregame(model: Model) -> Element(Msg) {
           }
         EnterPlayer -> shared.input_new_player(ReceiveName)
         AskOkPlayer(player) -> {
-          shared.confirm_cells(
-            Some("Join as this player: " <> player <> "?"),
-            player,
-            AcceptPlayer,
-          )
+          [
+            content_cell("Join as this player: " <> player, None, Answer),
+            click_cell(Some(player), AcceptPlayer, Some("[# Yes]"), None, Name),
+            click_cell(None, AcceptPlayer, Some("[# No]"), None, Name),
+          ]
+          |> div_styled(Box)
         }
         PickGametype -> {
           html.div([], [
-            click_cell(1, "Live Game", PickedGame),
-            click_cell(2, "Single Game", PickedGame),
-            click_cell(
-              3,
-              "View (non-live game) answers from players in room",
-              PickedGame,
-            ),
+            click(1, "Live Game"),
+            click(2, "Single Game"),
+            click(3, "View (non-live game) answers from players in room"),
           ])
         }
         ListAnswers -> {
@@ -254,14 +251,7 @@ fn view_pregame(model: Model) -> Element(Msg) {
   ])
 }
 
-fn click_cell(
-  number: Int,
-  text: String,
-  on_click: fn(String) -> msg,
-) -> Element(msg) {
-  html.div([class("participant-login"), event.on_click(on_click(text))], [
-    html.div([class("participant-name")], [
-      html.text("► " <> "[#" <> int.to_string(number) <> "] " <> text),
-    ]),
-  ])
+fn click(number: Int, text: String) -> Element(Msg) {
+  Some("► " <> "[#" <> int.to_string(number) <> "] " <> text)
+  |> click_cell(text, PickedGame, _, None, Box)
 }

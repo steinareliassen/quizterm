@@ -19,10 +19,12 @@ pub fn click_cell(
   on_click: fn(id) -> msg,
   tag: Option(String),
   value: Option(String),
+  value_style: Style,
+  // todo: wrap with value option.
 ) -> Element(msg) {
   [
-    tag |> maybe_tag |> arr |> div_styled(Name),
-    value |> maybe_text |> arr |> div_styled(Answer),
+    tag |> maybe_tag(Name),
+    value |> maybe_text(value_style),
   ]
   |> div_styled_click(Login, id, on_click)
 }
@@ -32,28 +34,25 @@ pub fn content_cell(
   value: Option(String),
   style: Style,
 ) -> Element(a) {
-  [
-    tag |> text |> arr |> div_styled(Name),
-    value |> maybe_text |> arr |> div_styled(Answer),
-  ]
+  [tag |> text |> arr |> div_styled(Name), value |> maybe_text(Answer)]
   |> div_styled(style)
 }
 
-fn maybe_tag(value: Option(String)) -> Element(a) {
+fn maybe_tag(value: Option(String), style: Style) -> Element(a) {
   case value {
-    Some(value) -> { "► [" <> value <> "]" } |> text
+    Some(value) -> { "► " <> value } |> text |> arr |> div_styled(style)
     None -> element.none()
   }
 }
 
-fn maybe_text(value: Option(String)) -> Element(a) {
+fn maybe_text(value: Option(String), style: Style) -> Element(a) {
   case value {
-    Some(value) -> value |> text
+    Some(value) -> value |> text |> arr |> div_styled(style)
     None -> element.none()
   }
 }
 
-fn div_styled(elements: List(Element(a)), style: Style) {
+pub fn div_styled(elements: List(Element(a)), style: Style) {
   html.div([style_class(style)], elements)
 }
 

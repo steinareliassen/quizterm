@@ -124,22 +124,17 @@ fn view_questions(answers: List(#(String, #(String, String)))) {
       [class("singles-grid")],
       list.map(answers, fn(content) {
         let #(number, #(question, answer)) = content
-        case string.length(answer) > 0 {
-          False ->
-            click_cell(
-              Some(#(number, question)),
-              PickedQuestion,
-              Some("[#" <> number <> "]" <> answer),
-              Some(question),
-            )
-          True ->
-            question_cell(
-              Some(number <> " " <> answer),
-              Some(#(number, question)),
-              True,
-              PickedQuestion,
-            )
-        }
+
+        click_cell(
+          Some(#(number, question)),
+          PickedQuestion,
+          Some("[#" <> number <> "] " <> answer),
+          Some(question),
+          case string.length(answer) > 0 {
+            False -> components.Name
+            True -> components.Answer
+          },
+        )
       }),
     ),
     html.div([], [
@@ -187,38 +182,4 @@ fn key_down(
     }
   })
   |> server_component.include(["key", "target.value"])
-}
-
-pub fn question_cell(
-  tag: Option(String),
-  pair: Option(#(String, String)),
-  display_value: Bool,
-  on_click: fn(Option(#(String, String))) -> msg,
-) -> Element(msg) {
-  let value = case pair {
-    Some(pair) -> {
-      let #(_, value) = pair
-      value
-    }
-    None -> ""
-  }
-  html.div([class("participant-login"), event.on_click(on_click(pair))], [
-    html.div([class("participant-name")], [
-      html.div([], [
-        html.text(
-          "► "
-          <> case tag {
-            Some(text) -> "[#" <> text <> "] "
-            None -> ""
-          },
-        ),
-      ]),
-      html.div([class("terminal-status")], [
-        case display_value {
-          True -> html.text(value)
-          False -> element.none()
-        },
-      ]),
-    ]),
-  ])
 }

@@ -2,6 +2,7 @@ import components.{click_cell, terminal_header}
 import gleam/int
 import gleam/list
 import gleam/option.{None, Some}
+import gleam/string
 import lustre/attribute.{class}
 import lustre/element.{type Element}
 import lustre/element/html
@@ -43,15 +44,18 @@ fn layout(header: String, ohno: option.Option(String), body: List(Element(Msg)))
 }
 
 fn view_room_list(items: List(Room)) -> Element(Msg) {
+  let room_compare = fn(a: Room, b: Room) { string.compare(a.name, b.name) }
   layout("Select room to play in", None, case items {
     [] -> [html.text("No rooms exist, nowhere to play! (ohno!)")]
     _ -> {
-      list.index_map(items, fn(item, index) {
+      list.sort(items, room_compare)
+      |> list.index_map(fn(item, index) {
         click_cell(
           item.id,
           SelectedRoom,
-          Some("[#" <> int.to_string(index) <> "]" <> item.name),
+          Some("[#" <> int.to_string(index) <> "] " <> item.name),
           None,
+          components.Answer,
         )
       })
     }

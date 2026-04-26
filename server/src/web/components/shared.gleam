@@ -1,4 +1,4 @@
-import components.{click_cell}
+import components.{Name, click_cell}
 import gleam/dynamic/decode
 import gleam/int
 import gleam/list
@@ -65,37 +65,29 @@ pub fn step_prompt(text: String, fetch: fn() -> Element(a)) {
   ])
 }
 
-pub fn confirm_cells(
-  title: Option(String),
-  accepted: String,
-  on_submit handle_button: fn(Option(String)) -> msg,
-) -> Element(msg) {
-  html.div([], [
-    html.div([attribute.class("participant-box")], [
-      html.div([attribute.class("participant-name")], [
-        case title {
-          Some(title) -> html.div([], [html.text(title)])
-          _ -> element.none()
-        },
-      ]),
-    ]),
-    click_cell(Some(accepted), handle_button, Some("[# Yes]"),None),
-    click_cell(None, handle_button, Some("[# No]"), None),
-  ])
-}
-
-pub fn view_players(
-  players: List(String),
-  handler: fn(Option(String)) -> msg,
-) {
+pub fn view_players(players: List(String), handler: fn(Option(String)) -> msg) {
   html.div([], [
     html.div(
       [],
       list.append(
         list.index_map(players, fn(item, index) {
-          click_cell(Some(item), handler, Some("[ #"<>int.to_string(index)<> " ]"), Some(item))
+          click_cell(
+            Some(item),
+            handler,
+            Some("[ #" <> int.to_string(index) <> " ]"),
+            Some(item),
+            Name,
+          )
         }),
-        [click_cell(None, handler,Some("[ # NEW ]"), Some("Enter new player"))],
+        [
+          click_cell(
+            None,
+            handler,
+            Some("[ # NEW ]"),
+            Some("Enter new player"),
+            Name,
+          ),
+        ],
       ),
     ),
   ])
@@ -119,10 +111,9 @@ pub fn input_cell(
         "input",
         html.input([
           attribute.type_("text"),
-          key_down(
-            fn(a: String) { decode.success(handle_keydown(a)) },
-            fn() { decode.failure(handle_keydown(""), "") },
-          ),
+          key_down(fn(a: String) { decode.success(handle_keydown(a)) }, fn() {
+            decode.failure(handle_keydown(""), "")
+          }),
           attribute.autofocus(True),
         ]),
       ),
