@@ -1,7 +1,6 @@
-import components.{click_cell_pair}
+import components.{click_cell, content_cell, terminal_header}
 import gleam/dynamic/decode
 import gleam/erlang/process.{type Subject}
-import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/otp/actor.{type Started}
@@ -86,19 +85,13 @@ pub fn update(model: Model, msg: Msg) {
 
 pub fn view(model: Model) -> Element(Msg) {
   element.fragment([
-    html.div([class("terminal-header")], [
-      html.div([class("terminal-status")], [
-        html.span([class("status-blink")], [html.text("●")]),
-        html.text(" SYSTEM READY"),
-        html.div([class("ml-8")], [
-          case model.state {
-            PickQuestion -> html.text("STATUS: Pick question to answer")
-            GiveAnswer(_, _) -> html.text("STATUS: Give your answer")
-            _ -> html.text("STATUS: Waiting for next question")
-          },
-        ]),
-      ]),
-    ]),
+    case model.state {
+      PickQuestion -> html.text("STATUS: Pick question to answer")
+      GiveAnswer(_, _) -> html.text("STATUS: Give your answer")
+      _ -> html.text("STATUS: Waiting for next question")
+    }
+      |> terminal_header,
+
     html.div([attribute.class("terminal-section")], [
       html.div([attribute.class("terminal-label mb-4")], [
         html.text("[ACTIVE TRANSMISSIONS]"),
@@ -108,7 +101,8 @@ pub fn view(model: Model) -> Element(Msg) {
       case model.state {
         PickQuestion -> view_questions(model.answers)
         GiveAnswer(answer, None) -> input_new_answer(answer)
-        _ -> content_cell(#(10, #("Answer", "Answer question")))
+        _ ->
+          content_cell("►  [ Answer ]", Some("Answer question"), components.Box)
       },
     ]),
   ])
@@ -117,10 +111,10 @@ pub fn view(model: Model) -> Element(Msg) {
 fn input_new_answer(question: #(String, String)) {
   let #(question_id, question_text) = question
   html.div([class("participant-box")], [
-    input_cell("Answer [" <> question_id <> "] " <> question_text, GiveAnswer(
-      question,
-      _,
-    )),
+    input_cell(
+      " ► Answer [" <> question_id <> "] " <> question_text,
+      GiveAnswer(question, _),
+    ),
   ])
 }
 
@@ -130,22 +124,17 @@ fn view_questions(answers: List(#(String, #(String, String)))) {
       [class("singles-grid")],
       list.map(answers, fn(content) {
         let #(number, #(question, answer)) = content
-        case string.length(answer) > 0 {
-          False ->
-            click_cell_pair(
-              Some(number <> " " <> answer),
-              Some(#(number, question)),
-              True,
-              PickedQuestion,
-            )
-          True ->
-            question_cell(
-              Some(number <> " " <> answer),
-              Some(#(number, question)),
-              True,
-              PickedQuestion,
-            )
-        }
+
+        click_cell(
+          Some(#(number, question)),
+          PickedQuestion,
+          Some("[#" <> number <> "] " <> answer),
+          Some(question),
+          case string.length(answer) > 0 {
+            False -> components.Name
+            True -> components.Answer
+          },
+        )
       }),
     ),
     html.div([], [
@@ -156,28 +145,11 @@ fn view_questions(answers: List(#(String, #(String, String)))) {
   ])
 }
 
-fn content_cell(answer: #(Int, #(String, String))) -> Element(Msg) {
-  let #(question, #(question_text, answer)) = answer
-  html.div(
-    [
-      class("participant-box"),
-    ],
-    [
-      html.div([class("participant-name")], [
-        html.text("► " <> int.to_string(question) <> " " <> question_text),
-      ]),
-      html.div([class("participant-answer")], [
-        html.text(answer),
-      ]),
-    ],
-  )
-}
-
 fn input_cell(
   text: String,
   on_submit handle_keydown: fn(Option(String)) -> msg,
 ) -> Element(msg) {
-  html.div([attribute.class("singles-grid")], [
+  html.div([], [
     html.div([], [html.text(text)]),
     keyed.div([], [
       #("inputheader", html.text("$>")),
@@ -210,38 +182,4 @@ fn key_down(
     }
   })
   |> server_component.include(["key", "target.value"])
-}
-
-pub fn question_cell(
-  tag: Option(String),
-  pair: Option(#(String, String)),
-  display_value: Bool,
-  on_click: fn(Option(#(String, String))) -> msg,
-) -> Element(msg) {
-  let value = case pair {
-    Some(pair) -> {
-      let #(_, value) = pair
-      value
-    }
-    None -> ""
-  }
-  html.div([class("participant-login"), event.on_click(on_click(pair))], [
-    html.div([class("participant-name")], [
-      html.div([], [
-        html.text(
-          "► "
-          <> case tag {
-            Some(text) -> "[#" <> text <> "] "
-            None -> ""
-          },
-        ),
-      ]),
-      html.div([class("terminal-status")], [
-        case display_value {
-          True -> html.text(value)
-          False -> element.none()
-        },
-      ]),
-    ]),
-  ])
 }

@@ -1,3 +1,4 @@
+import components.{content_cell, terminal_header}
 import gleam/erlang/process.{type Subject}
 import gleam/int
 import gleam/list
@@ -90,23 +91,15 @@ fn handle_server_message(model: Model, notify_client) {
 pub fn view(model: Model) -> Element(Msg) {
   let #(question, lobby) = model.lobby
   element.fragment([
-    html.div([class("terminal-header")], [
-      html.div([class("terminal-status")], [
-        html.span([class("status-blink")], [html.text("●")]),
-        html.text(" SYSTEM READY"),
-        html.span([class("ml-8")], [
-          case model.state {
-            Answer ->
-              html.div([], [
-                html.div([], [html.text("STATUS: Answer the following:")]),
-                html.div([], [html.text(question)]),
-              ])
-            _ -> html.text("STATUS: Waiting for next question")
-          },
-        ]),
-      ]),
-    ]),
-
+    case model.state {
+      Answer ->
+        html.div([], [
+          html.div([], [html.text("STATUS: Answer the following:")]),
+          html.div([], [html.text(question)]),
+        ])
+      _ -> html.text("STATUS: Waiting for next question")
+    }
+      |> terminal_header,
     case model.state {
       Init -> {
         actor.send(model.handler.data, message.GiveName(model.name))
@@ -169,11 +162,11 @@ pub fn view(model: Model) -> Element(Msg) {
         fn(user) {
           let User(name, ping_time, answer) = user
           case answer {
-            message.GivenAnswer(answer) -> answer
-            message.HasAnswered -> "Answer Given"
-            _ -> "Odd State..."
+            message.GivenAnswer(answer) -> Some(answer)
+            message.HasAnswered -> Some("Answer Given")
+            _ -> Some("Odd State...")
           }
-          |> content_cell(name, ping_time, _)
+          |> content_cell("► " <> name, _, ping_to_style(ping_time))
         },
       ),
       terminal_section(
@@ -187,7 +180,11 @@ pub fn view(model: Model) -> Element(Msg) {
         },
         fn(user) {
           let User(name, ping_time, _) = user
-          content_cell(name, ping_time, "P.A.S.S :(")
+          content_cell(
+            "► " <> name,
+            Some("P.A.S.S. :("),
+            ping_to_style(ping_time),
+          )
         },
       ),
       terminal_section(
@@ -202,7 +199,11 @@ pub fn view(model: Model) -> Element(Msg) {
         fn(user) {
           case user {
             User(name, ping_time, _) ->
-              content_cell(name, ping_time, "Not Answered")
+              content_cell(
+                "► " <> name,
+                Some("Not answered"),
+                ping_to_style(ping_time),
+              )
           }
         },
       ),
@@ -216,6 +217,13 @@ pub fn view(model: Model) -> Element(Msg) {
       ),
     ]),
   ])
+}
+
+fn ping_to_style(ping_time: Int) {
+  case ping_time > 1 {
+    True -> components.Disconnect
+    False -> components.Box
+  }
 }
 
 fn terminal_section(
@@ -234,23 +242,4 @@ fn terminal_section(
         |> list.map(extract),
     ),
   ])
-}
-
-fn content_cell(header: String, ping_time: Int, content: String) -> Element(Msg) {
-  html.div(
-    [
-      class(case ping_time > 1 {
-        True -> "participant-disconnect"
-        False -> "participant-box"
-      }),
-    ],
-    [
-      html.div([class("participant-name")], [
-        html.text("► " <> header),
-      ]),
-      html.div([class("participant-answer")], [
-        html.text(content),
-      ]),
-    ],
-  )
 }
