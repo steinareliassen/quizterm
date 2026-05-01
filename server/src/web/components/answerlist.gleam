@@ -1,5 +1,4 @@
 import components.{click_cell, content_cell, terminal_header}
-import gleam/dynamic/decode
 import gleam/erlang/process.{type Subject}
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -8,10 +7,8 @@ import gleam/string
 import lustre/attribute.{class}
 import lustre/element.{type Element}
 import lustre/element/html
-import lustre/element/keyed
-import lustre/event
-import lustre/server_component
 import shared/message
+import web/components/shared.{input_cell}
 
 pub opaque type Model {
   Model(
@@ -25,7 +22,7 @@ pub opaque type Model {
 pub opaque type Msg {
   PickQuestion
   PickedQuestion(question: Option(#(String, String)))
-  GiveAnswer(question: #(String, String), answer: Option(String))
+  GiveAnswer(question: #(String, String), answer: String)
 }
 
 pub fn init(
@@ -56,9 +53,9 @@ pub fn init(
 pub fn update(model: Model, msg: Msg) {
   case msg {
     PickedQuestion(Some(question)) -> {
-      Model(..model, state: GiveAnswer(question:, answer: None))
+      Model(..model, state: GiveAnswer(question:, answer: ""))
     }
-    GiveAnswer(question, Some(answer)) -> {
+    GiveAnswer(question, answer) -> {
       let #(question, _) = question
       actor.send(
         model.handler.data,
@@ -78,8 +75,7 @@ pub fn update(model: Model, msg: Msg) {
       )
     }
     // Invalid states and "I want to start over" states.
-    GiveAnswer(_, None) | PickedQuestion(None) | PickQuestion ->
-      Model(..model, state: PickQuestion)
+    PickedQuestion(None) | PickQuestion -> Model(..model, state: PickQuestion)
   }
 }
 
@@ -100,7 +96,7 @@ pub fn view(model: Model) -> Element(Msg) {
     html.div([class("participants-grid")], [
       case model.state {
         PickQuestion -> view_questions(model.answers)
-        GiveAnswer(answer, None) -> input_new_answer(answer)
+        GiveAnswer(answer, "") -> input_new_answer(answer)
         _ ->
           content_cell("►  [ Answer ]", Some("Answer question"), components.Box)
       },
@@ -145,41 +141,3 @@ fn view_questions(answers: List(#(String, #(String, String)))) {
   ])
 }
 
-fn input_cell(
-  text: String,
-  on_submit handle_keydown: fn(Option(String)) -> msg,
-) -> Element(msg) {
-  html.div([], [
-    html.div([], [html.text(text)]),
-    keyed.div([], [
-      #("inputheader", html.text("$>")),
-      #(
-        "input",
-        html.input([
-          attribute.type_("text"),
-          key_down(
-            fn(a: String) { decode.success(handle_keydown(Some(a))) },
-            fn() { decode.failure(handle_keydown(None), "") },
-          ),
-          attribute.autofocus(True),
-        ]),
-      ),
-    ]),
-  ])
-}
-
-fn key_down(
-  success: fn(String) -> decode.Decoder(msg),
-  fail: fn() -> decode.Decoder(msg),
-) {
-  event.on("keydown", {
-    use key <- decode.field("key", decode.string)
-    use value <- decode.subfield(["target", "value"], decode.string)
-
-    case key {
-      "Enter" if value != "" -> success(value)
-      _ -> fail()
-    }
-  })
-  |> server_component.include(["key", "target.value"])
-}

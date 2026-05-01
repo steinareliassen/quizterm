@@ -14,6 +14,27 @@ pub fn terminal_header(element: Element(a)) -> Element(a) {
   ])
 }
 
+pub fn input_cell(
+  header: String,
+  password: Bool,
+  on_input: fn(String) -> msg,
+  style: Style,
+) -> Element(msg) {
+  [
+    html.p([], [html.text("► " <> header)]),
+    html.div([], [
+      html.input([
+        attribute.type_(case password {
+          True -> "password"
+          False -> "text"
+        }),
+        event.on_input(on_input),
+        attribute.autofocus(True),
+      ]),
+    ]),
+  ] |> div_styled(style)
+}
+
 pub fn click_cell(
   id: id,
   on_click: fn(id) -> msg,

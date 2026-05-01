@@ -5,6 +5,7 @@ import lustre/element
 import lustre/element/html.{body, div, head, html, link, meta, script, title}
 import shared/message.{RoomInfo}
 import wisp.{type Response}
+import components.{terminal_header}
 
 pub fn main_html(rooms: List(#(String, message.RoomInfo))) -> Response {
   html([], [
@@ -122,11 +123,6 @@ pub fn create_json_response(response: #(Int, String, String)) {
 
 pub fn status_head(output: String) {
   fn() -> element.Element(a) {
-    html.div([class("terminal-header")], [
-      html.div([class("terminal-status")], [
-        html.span([class("status-blink")], [html.text("●")]),
-        html.h2([class("ml-8")], [html.text(output)]),
-      ]),
-    ])
+    html.text(output) |> terminal_header
   }
 }

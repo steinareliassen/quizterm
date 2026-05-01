@@ -1,4 +1,4 @@
-import components.{click_cell, terminal_header}
+import components.{click_cell, terminal_header,input_cell,Box}
 import gleam/int
 import gleam/list
 import gleam/option.{None, Some}
@@ -6,7 +6,6 @@ import gleam/string
 import lustre/attribute.{class}
 import lustre/element.{type Element}
 import lustre/element/html
-import lustre/event
 import lustre/server_component
 import model.{
   type Model, type Msg, type Room, Empty, EnterPin, JoinGame, KeyPin,
@@ -66,7 +65,7 @@ fn view_enter_pin() -> Element(Msg) {
   layout("Enter PIN code for room", None, [
     html.div([class("participant-hidden")], []),
 
-    input_cell("[#ENTER PIN]", True, KeyPin),
+    input_cell("[#ENTER PIN]", True, KeyPin, Box),
     html.div([class("participant-hidden")], []),
   ])
 }
@@ -80,24 +79,3 @@ fn view_game(room: String, pin: String) -> Element(Msg) {
   ])
 }
 
-fn input_cell(
-  header: String,
-  password: Bool,
-  on_input: fn(String) -> Msg,
-) -> Element(Msg) {
-  html.div([class("participant-box")], [
-    html.div([class("participant-name")], [
-      html.p([], [html.text("► " <> header)]),
-      html.div([], [
-        html.input([
-          attribute.type_(case password {
-            True -> "password"
-            False -> "text"
-          }),
-          event.on_input(on_input),
-          attribute.autofocus(True),
-        ]),
-      ]),
-    ]),
-  ])
-}

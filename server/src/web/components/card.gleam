@@ -1,4 +1,5 @@
 import components.{content_cell, terminal_header}
+import gleam/dynamic/decode
 import gleam/erlang/process.{type Subject}
 import gleam/int
 import gleam/list
@@ -9,9 +10,10 @@ import lustre/attribute.{class}
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html
+import lustre/element/keyed
 import lustre/server_component
 import shared/message.{type NotifyClient, type NotifyServer, type User, User}
-import web/components/shared.{step_prompt, view_input}
+import web/components/shared.{key_down}
 
 type State {
   Init
@@ -89,7 +91,7 @@ fn handle_server_message(model: Model, notify_client) {
 }
 
 pub fn view(model: Model) -> Element(Msg) {
-  let #(question, lobby) = model.lobby
+  let #(question, users) = model.lobby
   element.fragment([
     case model.state {
       Answer ->
@@ -122,20 +124,11 @@ pub fn view(model: Model) -> Element(Msg) {
       }
     },
     element.fragment([
-      html.div([class("terminal-section")], case lobby {
+      html.div([class("terminal-section")], case users {
         [] -> []
-        lobby -> {
-          let answered =
-            list.filter(lobby, fn(x) {
-              case x.answer {
-                message.IDontKnow | message.HasAnswered | message.GivenAnswer(_) ->
-                  True
-                _ -> False
-              }
-            })
-            |> list.length
-            |> int.to_string
-          let size = lobby |> list.length |> int.to_string
+        users -> {
+          let answered = count_answered(users)
+          let size = users |> list.length |> int.to_string
           [
             html.div([attribute.class("terminal-box")], [
               html.span([attribute.class("terminal-label")], [
@@ -151,10 +144,10 @@ pub fn view(model: Model) -> Element(Msg) {
         }
       }),
       terminal_section(
-        lobby,
+        users,
         "[ACTIVE TRANSMISSIONS]",
         fn(x) {
-          case x.answer {
+          case x.answer  {
             message.GivenAnswer(_) | message.HasAnswered -> True
             _ -> False
           }
@@ -170,7 +163,7 @@ pub fn view(model: Model) -> Element(Msg) {
         },
       ),
       terminal_section(
-        lobby,
+        users,
         "[P A S S]",
         fn(x) {
           case x.answer {
@@ -188,7 +181,7 @@ pub fn view(model: Model) -> Element(Msg) {
         },
       ),
       terminal_section(
-        lobby,
+        users,
         "[AWAITING RESPONSE]",
         fn(x) {
           case x.answer {
@@ -242,4 +235,43 @@ fn terminal_section(
         |> list.map(extract),
     ),
   ])
+}
+
+pub fn view_input(on_submit handle_keydown: fn(String) -> msg) -> Element(msg) {
+  // Why keyed? See: https://hexdocs.pm/lustre/lustre/element/keyed.html
+  keyed.div([], [
+    #("inputheader", html.text("$>")),
+    #(
+      "input",
+      html.input([
+        attribute.type_("text"),
+        key_down(fn(a: String) { decode.success(handle_keydown(a)) }, fn() {
+          decode.failure(handle_keydown(""), "")
+        }),
+        attribute.autofocus(True),
+      ]),
+    ),
+  ])
+}
+
+fn step_prompt(text: String, fetch: fn() -> Element(a)) {
+  html.div([attribute.class("prompt-line")], [
+    html.div([attribute.class("prompt-text")], [
+      html.div([], [
+        html.text(text),
+      ]),
+      fetch(),
+    ]),
+  ])
+}
+
+fn count_answered(users: List(User)) {
+  list.filter(users, fn(x) {
+    case x.answer {
+      message.IDontKnow | message.HasAnswered | message.GivenAnswer(_) -> True
+      _ -> False
+    }
+  })
+  |> list.length
+  |> int.to_string
 }

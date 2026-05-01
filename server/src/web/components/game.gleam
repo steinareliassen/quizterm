@@ -1,4 +1,6 @@
-import components.{Answer, Box, Name, click_cell, content_cell, div_styled}
+import components.{
+  Answer, Box, Name, click_cell, content_cell, div_styled, terminal_header,
+}
 import gleam/erlang/process.{type Subject}
 import gleam/int
 import gleam/list
@@ -13,7 +15,7 @@ import lustre/element/html
 import shared/message.{type ClientsServer, type NotifyClient, type NotifyServer}
 import web/components/answerlist
 import web/components/card
-import web/components/shared
+import web/components/shared.{input_cell}
 
 pub fn component() -> lustre.App(
   #(String, String, actor.Started(Subject(message.StateControl)), ClientsServer),
@@ -178,20 +180,13 @@ fn view(model: Game) -> Element(GameMsg) {
 
 fn view_pregame(model: Model) -> Element(Msg) {
   element.fragment([
-    html.div([class("terminal-header")], [
-      html.div([class("terminal-status")], [
-        html.span([class("status-blink")], [html.text("●")]),
-        html.text(" SYSTEM READY"),
-        html.div([class("ml-8")], [
-          case model.state {
-            PickPlayer -> html.text("STATUS: Please select player")
-            EnterPlayer -> html.text("STATUS: Please enter your name")
-            AskOkPlayer(_) -> html.text("STATUS: Validate player")
-            _ -> html.text("STATUS: Waiting for next question")
-          },
-        ]),
-      ]),
-    ]),
+    case model.state {
+      PickPlayer -> html.text("STATUS: Please select player")
+      EnterPlayer -> html.text("STATUS: Please enter your name")
+      AskOkPlayer(_) -> html.text("STATUS: Validate player")
+      _ -> html.text("STATUS: Waiting for next question")
+    }
+      |> terminal_header,
     html.div([attribute.class("terminal-section")], [
       html.div([attribute.class("terminal-label mb-4")], [
         html.text("[ACTIVE TRANSMISSIONS]"),
@@ -199,16 +194,18 @@ fn view_pregame(model: Model) -> Element(Msg) {
     ]),
     html.div([class("participants-grid")], [
       case model.state {
-        PickPlayer ->
-          case model.players {
-            [] -> shared.input_new_player(ReceiveName)
-            _ ->
-              shared.view_players(
+        EnterPlayer | PickPlayer ->
+          case model.state {
+            PickPlayer if model.players != [] ->
+              view_players(
                 list.map(model.players, fn(player) { player }),
                 PickedPlayer,
               )
+            _ ->
+              html.div([attribute.class("participant-box")], [
+                input_cell("Enter player name:", ReceiveName),
+              ])
           }
-        EnterPlayer -> shared.input_new_player(ReceiveName)
         AskOkPlayer(player) -> {
           [
             content_cell("Join as this player: " <> player, None, Answer),
@@ -224,31 +221,47 @@ fn view_pregame(model: Model) -> Element(Msg) {
             click(3, "View (non-live game) answers from players in room"),
           ])
         }
-        ListAnswers -> {
-          html.div(
-            [],
-            list.map(
-              actor.call(
-                model.player_handler.data,
-                2000,
-                message.FetchAllAnswers,
-              ),
-              fn(line) {
-                let #(num, num_list) = line
-                html.div([], [
-                  html.text(int.to_string(num)),
-                  ..list.map(num_list, fn(num_line) {
-                    let #(player, answer) = num_line
-                    html.div([], [html.text(player <> " : " <> answer)])
-                  })
-                ])
-              },
-            ),
-          )
-        }
+        ListAnswers -> list_answers(model.player_handler)
       },
     ]),
   ])
+}
+
+fn view_players(players: List(String), handler: fn(Option(String)) -> msg) {
+  html.div([], [
+    html.div(
+      [],
+      list.append(
+        list.index_map(players, fn(item, index) {
+          Some("[ #" <> int.to_string(index) <> " ]")
+          |> click_cell(Some(item), handler, _, Some(item), Name)
+        }),
+        [
+          Some("[ # NEW ]")
+          |> click_cell(None, handler, _, Some("Enter new player"), Name),
+        ],
+      ),
+    ),
+  ])
+}
+
+fn list_answers(player_handler: Started(Subject(NotifyServer))) {
+  html.div(
+    [],
+    list.map(
+      actor.call(player_handler.data, 2000, message.FetchAllAnswers),
+      fn(line) {
+        let #(num, num_list) = line
+        html.div([], [
+          html.text(int.to_string(num)),
+          ..list.map(num_list, fn(num_line) {
+            let #(player, answer) = num_line
+            html.div([], [html.text(player <> " : " <> answer)])
+          })
+        ])
+      },
+    ),
+  )
 }
 
 fn click(number: Int, text: String) -> Element(Msg) {
