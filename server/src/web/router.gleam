@@ -1,3 +1,4 @@
+import backend/statehandler.{type StateControl, SetAnswer, SetInfo, SetQuestion}
 import gleam/bit_array
 import gleam/crypto
 import gleam/dynamic
@@ -8,7 +9,7 @@ import gleam/int
 import gleam/list
 import gleam/otp/actor.{type Started}
 import gleam/string
-import shared/message.{type RoomControl, type StateControl}
+import shared/message.{type RoomControl}
 import web/handlers/serve.{html_404}
 import wisp.{type Request, type Response}
 
@@ -82,9 +83,9 @@ fn handle_admin_api(
   case req.method, path {
     http.Post, ["info"] -> decode_info(actor, json)
     http.Post, ["questions"] ->
-      decode_index_to_text(actor, json, message.SetQuestion)
+      decode_index_to_text(actor, json, SetQuestion)
     http.Post, ["answers"] ->
-      decode_index_to_text(actor, json, message.SetAnswer)
+      decode_index_to_text(actor, json, SetAnswer)
     _, _ -> #(404, "bad api path", "Resource not found")
   }
 }
@@ -101,7 +102,7 @@ fn decode_info(
 ) {
   let decode_uri = {
     use uri <- decode.field("teaserImage", decode.string)
-    decode.success(message.SetInfo(uri))
+    decode.success(SetInfo(uri))
   }
   case decode.run(json_string, decode_uri) {
     Ok(info) -> {

@@ -1,3 +1,4 @@
+import backend/statehandler.{type StateControl, FetchQuestions}
 import components.{
   Answer, Box, Name, click_cell, content_cell, div_styled, terminal_header,
 }
@@ -18,7 +19,7 @@ import web/components/card
 import web/components/shared.{input_cell}
 
 pub fn component() -> lustre.App(
-  #(String, String, actor.Started(Subject(message.StateControl)), ClientsServer),
+  #(String, String, actor.Started(Subject(StateControl)), ClientsServer),
   Game,
   GameMsg,
 ) {
@@ -32,7 +33,7 @@ pub opaque type Model {
     player: Option(String),
     registry: GroupRegistry(NotifyClient),
     player_handler: Started(Subject(NotifyServer)),
-    state_handler: actor.Started(Subject(message.StateControl)),
+    state_handler: actor.Started(Subject(StateControl)),
     team_id: String,
     team_pin: String,
   )
@@ -69,7 +70,7 @@ fn init(
   handlers: #(
     String,
     String,
-    actor.Started(Subject(message.StateControl)),
+    actor.Started(Subject(StateControl)),
     ClientsServer,
   ),
 ) -> #(Game, Effect(GameMsg)) {
@@ -146,17 +147,11 @@ fn update_pregame(model: Model, msg: Msg) {
             )
             "Single Game" -> {
               let answer_list =
-                actor.call(
-                  model.state_handler.data,
-                  1000,
-                  message.FetchQuestions,
-                )
+                actor.call(model.state_handler.data, 1000, FetchQuestions)
               #(
-                SingleGame(answerlist.init(
-                  name,
-                  answer_list,
-                  model.player_handler,
-                )),
+                SingleGame(
+                  model.player_handler |> answerlist.init(name, answer_list, _),
+                ),
                 effect.none(),
               )
             }
@@ -228,40 +223,34 @@ fn view_pregame(model: Model) -> Element(Msg) {
 }
 
 fn view_players(players: List(String), handler: fn(Option(String)) -> msg) {
-  html.div([], [
-    html.div(
-      [],
-      list.append(
-        list.index_map(players, fn(item, index) {
-          Some("[ #" <> int.to_string(index) <> " ]")
-          |> click_cell(Some(item), handler, _, Some(item), Name)
-        }),
-        [
-          Some("[ # NEW ]")
-          |> click_cell(None, handler, _, Some("Enter new player"), Name),
-        ],
-      ),
-    ),
-  ])
+  list.append(
+    list.index_map(players, fn(item, index) {
+      Some("[ #" <> int.to_string(index) <> " ]")
+      |> click_cell(Some(item), handler, _, Some(item), Name)
+    }),
+    [
+      Some("[ # NEW ]")
+      |> click_cell(None, handler, _, Some("Enter new player"), Name),
+    ],
+  )
+  |> html.div([], _)
 }
 
 fn list_answers(player_handler: Started(Subject(NotifyServer))) {
-  html.div(
-    [],
-    list.map(
-      actor.call(player_handler.data, 2000, message.FetchAllAnswers),
-      fn(line) {
-        let #(num, num_list) = line
-        html.div([], [
-          html.text(int.to_string(num)),
-          ..list.map(num_list, fn(num_line) {
-            let #(player, answer) = num_line
-            html.div([], [html.text(player <> " : " <> answer)])
-          })
-        ])
-      },
-    ),
+  list.map(
+    actor.call(player_handler.data, 2000, message.FetchAllAnswers),
+    fn(line) {
+      let #(num, num_list) = line
+      html.div([], [
+        html.text(int.to_string(num)),
+        ..list.map(num_list, fn(num_line) {
+          let #(player, answer) = num_line
+          html.div([], [html.text(player <> " : " <> answer)])
+        })
+      ])
+    },
   )
+  |> html.div([], _)
 }
 
 fn click(number: Int, text: String) -> Element(Msg) {

@@ -1,11 +1,19 @@
+import gleam/erlang/process.{type Subject}
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/otp/actor
-import shared/message.{type StateControl, SetQuestion}
 
 type State {
   State(uri: Option(String), questions: List(#(Int, #(String, String))))
+}
+
+pub type StateControl {
+  SetQuestion(id: Int, question: String)
+  SetAnswer(id: Int, answer: String)
+  SetInfo(url: String)
+  FetchQuestion(id: Int, subject: Subject(Option(String)))
+  FetchQuestions(subject: Subject(List(#(String, String))))
 }
 
 pub fn initialize() {
@@ -29,7 +37,7 @@ pub fn initialize() {
             )
         }
       }
-      message.SetAnswer(id:, answer:) if id >= 0 && id <= 14 ->
+      SetAnswer(id:, answer:) if id >= 0 && id <= 14 ->
         case list.key_find(state.questions, id) {
           Ok(#(question, _)) ->
             State(
@@ -47,8 +55,8 @@ pub fn initialize() {
         }
 
       // Ignore requests for questions/answers not between 1 and 14.
-      message.SetQuestion(_, _) | message.SetAnswer(_, _) -> state
-      message.FetchQuestion(id:, subject:) -> {
+      SetQuestion(_, _) | SetAnswer(_, _) -> state
+      FetchQuestion(id:, subject:) -> {
         case
           // Find the room, if it exists
           list.key_find(state.questions, id)
@@ -58,8 +66,8 @@ pub fn initialize() {
         }
         state
       }
-      message.SetInfo(uri) -> State(..state, uri: Some(uri))
-      message.FetchQuestions(subject) -> {
+      SetInfo(uri) -> State(..state, uri: Some(uri))
+      FetchQuestions(subject) -> {
         actor.send(
           subject,
           list.map(state.questions, fn(x) {

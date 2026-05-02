@@ -1,33 +1,36 @@
 import backend/playerhandler as player_handler
+import backend/statehandler.{type StateControl}
 import gleam/bit_array
 import gleam/crypto
 import gleam/dynamic/decode
 import gleam/erlang/process.{type Subject}
 import gleam/json
 import gleam/list
-import gleam/option.{None, Some}
+import gleam/option.{type Option,None, Some}
 import gleam/otp/actor.{type Started}
 import gleam/string
 import group_registry
-import shared/message.{
-  type Room, type RoomControl, type RoomInfo, type StateControl, CreateRoom,
-  FetchRoom, FetchRooms, PingTime, Room, RoomInfo,
-}
 import storail
 
-// Room handler, actor to hold the rooms for the different teams playing.
-//
-// Reacts to:
-// CreateRoom(id, name, pin_enc) - create room with given ID, name and encoded pin
-//
-// Responds to:
-// FetchRoom(id, <subject>) - Fetch room with the given id.
-// FetchRooms(<subject>) - Fetch list of rooms.
+pub type Room(actors) {
+  Room(name: String, pin_enc: String, actors: actors)
+}
 
-type Rooms {
+pub type RoomInfo {
+  RoomInfo(name: String, pin_enc: String)
+}
+
+pub type RoomControl(actors) {
+  CreateRoom(id: String, room: RoomInfo)
+  FetchRoom(id: String, pin: String, subject: Subject(Option(actors)))
+  FetchRooms(subject: Subject(List(#(String, RoomInfo))))
+}
+
+
+type Rooms(actors) {
   Rooms(
     store: storail.Collection(#(String, RoomInfo)),
-    rooms: List(#(String, Room)),
+    rooms: List(#(String, Room(actors)))
   )
 }
 

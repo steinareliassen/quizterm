@@ -5,17 +5,10 @@ import lustre/element
 import lustre/element/html.{body, div, head, html, link, meta, script, title}
 import shared/message.{RoomInfo}
 import wisp.{type Response}
-import components.{terminal_header}
 
 pub fn main_html(rooms: List(#(String, message.RoomInfo))) -> Response {
   html([], [
-    head([], [
-      meta([attribute.charset("utf-8")]),
-      meta([
-        attribute.name("viewport"),
-        attribute.content("width=device-width, initial-scale=1.0"),
-      ]),
-      title([], "QUIZTERMINAL v1.0"),
+    page_head([
       script(
         [attribute.type_("module"), attribute.src("/lustre/runtime.mjs")],
         "",
@@ -36,81 +29,72 @@ pub fn main_html(rooms: List(#(String, message.RoomInfo))) -> Response {
         })
           |> json.to_string,
       ),
-      link([
-        attribute.rel("stylesheet"),
-        attribute.type_("text/css"),
-        attribute.href("/static/layout.css"),
-      ]),
     ]),
-    body([], [
-      div([class("terminal-screen")], [
-        div([class("terminal-glow")], [
-          div([class("scanlines")], []),
-
-          // title
-          div([class("terminal-header")], [
-            html.pre([class("terminal-title")], [
-              html.text(
-                "
+    page_body([
+      div([class("scanlines")], []),
+      splash(
+        "
 ╔═══════════════════════════════════════╗
 ║       Q U I Z T E R M I N A L         ║
 ╚═══════════════════════════════════════╝
 ",
-              ),
-            ]),
-          ]),
-          html.div([attribute.id("app")], []),
-        ]),
-      ]),
+      ),
+      html.div([attribute.id("app")], []),
     ]),
   ])
   |> element.to_document_string
   |> wisp.html_response(200)
 }
 
-// Todo: join with main_html
 pub fn html_404() -> Response {
   html([], [
-    head([], [
-      meta([attribute.charset("utf-8")]),
-      meta([
-        attribute.name("viewport"),
-        attribute.content("width=device-width, initial-scale=1.0"),
-      ]),
-      title([], "QUIZTERMINAL v1.0"),
-      script(
-        [attribute.type_("module"), attribute.src("/lustre/runtime.mjs")],
-        "",
-      ),
-      link([
-        attribute.rel("stylesheet"),
-        attribute.type_("text/css"),
-        attribute.href("/static/layout.css"),
-      ]),
-    ]),
-    body([], [
-      div([class("terminal-screen")], [
-        div([class("terminal-glow")], [
-          div([class("scanlines")], []),
-
-          // title
-          div([class("terminal-header")], [
-            html.pre([class("terminal-title")], [
-              html.text(
-                "
+    page_head([element.none()]),
+    page_body([
+      div([class("scanlines")], []),
+      splash(
+        "
 ╔═══════════════════════════════════════╗
 ║           4       0       4           ║
 ╚═════════════════════════════════ohno!═╝
 ",
-              ),
-            ]),
-          ]),
-        ]),
-      ]),
+      ),
     ]),
   ])
   |> element.to_document_string
   |> wisp.html_response(400)
+}
+
+fn splash(splash: String) {
+  div([class("terminal-header")], [
+    html.pre([class("terminal-title")], [
+      html.text(splash),
+    ]),
+  ])
+}
+
+fn page_head(header_elements: List(element.Element(msg))) {
+  head([], [
+    meta([attribute.charset("utf-8")]),
+    meta([
+      attribute.name("viewport"),
+      attribute.content("width=device-width, initial-scale=1.0"),
+    ]),
+    title([], "QUIZTERMINAL v1.0"),
+    link([
+      attribute.rel("stylesheet"),
+      attribute.type_("text/css"),
+      attribute.href("/static/layout.css"),
+    ]),
+    ..header_elements
+  ])
+}
+
+fn page_body(elements: List(element.Element(msg))) {
+  body([], [
+    div([class("terminal-screen")], [
+      div([class("terminal-glow")], elements),
+    ]),
+  ])
 }
 
 pub fn create_json_response(response: #(Int, String, String)) {
@@ -119,10 +103,4 @@ pub fn create_json_response(response: #(Int, String, String)) {
   json.object([#("response", json.string(output))])
   |> json.to_string
   |> wisp.json_response(200)
-}
-
-pub fn status_head(output: String) {
-  fn() -> element.Element(a) {
-    html.text(output) |> terminal_header
-  }
 }

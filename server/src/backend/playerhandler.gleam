@@ -1,15 +1,13 @@
+import backend/statehandler.{type StateControl, FetchQuestion}
 import gleam/erlang/process.{type Subject}
 import gleam/int
 import gleam/list
-import gleam/option.{None, Some}
+import gleam/option.{type Option, None, Some}
 import gleam/otp/actor
 import group_registry.{type GroupRegistry}
-import shared/message.{
-  type AnswerStatus, type NotifyClient, type StateControl, Answer, AnswerQuiz,
-  Await, GiveAnswer, GiveName, GiveSingleAnswer, GivenAnswer, HasAnswered,
-  IDontKnow, Lobby, NotAnswered, PingTime, Pong, PurgePlayers, RevealAnswer,
-  User,
-}
+
+pub type ClientsServer(notifyserver) =
+  #(GroupRegistry(NotifyClient), notifyserver)
 
 type State {
   State(
@@ -25,6 +23,39 @@ type State {
   )
 }
 
+pub type AnswerStatus {
+  NotAnswered
+  HasAnswered
+  IDontKnow
+  GivenAnswer(answer: String)
+}
+
+pub type NotifyClient {
+  Ping
+  Lobby(question: String, names: List(User(AnswerStatus)))
+  Answer
+  Await
+}
+
+pub type NotifyServer {
+  PingTime(Subject(NotifyServer))
+  Pong(name: String)
+  AnswerQuiz
+  RevealAnswer
+  PurgePlayers
+  GiveName(name: String)
+  GiveAnswer(name: String, answer: Option(String))
+  GiveSingleAnswer(id: String, question: String, answer: String)
+  FetchPlayers(subject: Subject(List(String)))
+  FetchAllAnswers(subject: Subject(List(#(Int, List(#(String, String))))))
+  FetchPlayerAnswers(player: String, subject: Subject(List(#(String, String))))
+  AddPlayer(String)
+}
+
+pub type User(status) {
+  User(name: String, ping_time: Int, answer: status)
+}
+
 pub fn initialize(
   state_handler: actor.Started(Subject(StateControl)),
   registry: GroupRegistry(NotifyClient),
@@ -34,7 +65,7 @@ pub fn initialize(
     let question = case state.question {
       None -> {
         case
-          actor.call(state_handler.data, 1000, message.FetchQuestion(
+          actor.call(state_handler.data, 1000, FetchQuestion(
             state.question_number,
             _,
           ))
@@ -91,17 +122,17 @@ pub fn initialize(
 
       // Switch from "Wait for next question" to "Answer next question" mode
       AnswerQuiz -> answer_quiz(state, registry)
-      message.FetchPlayers(subject:) -> {
+      FetchPlayers(subject:) -> {
         actor.send(subject, state.players)
         state
       }
 
-      message.AddPlayer(name) ->
+      AddPlayer(name) ->
         State(..state, players: add_player(name, state.players))
-      message.FetchAllAnswers(subject:) -> {
+      FetchAllAnswers(subject:) -> {
         let listish =
           // ... Figure out what replaced list.range and do this properly...
-          list.map([1,2,3,4,5,6,7,8,9,10,11,12,13,14], fn(a) {
+          list.map([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14], fn(a) {
             #(
               a,
               list.flat_map(state.single_answers, fn(name_answers) {
@@ -122,7 +153,7 @@ pub fn initialize(
         actor.send(subject, listish)
         state
       }
-      message.FetchPlayerAnswers(player:, subject:) -> {
+      FetchPlayerAnswers(player:, subject:) -> {
         actor.send(subject, case list.key_find(state.single_answers, player) {
           Ok(list) -> list
           Error(_) -> []
@@ -144,8 +175,8 @@ fn add_player(name: String, players: List(String)) {
 
 // Reschedule a new ping request, and ask clients to ping us back
 fn ping(state, registry, sender) {
-  broadcast(registry, message.Ping)
-  process.send_after(sender, 2000, message.PingTime(sender))
+  broadcast(registry, Ping)
+  process.send_after(sender, 2000, PingTime(sender))
   State(
     ..state,
     // Increase ping count with one,
@@ -182,7 +213,7 @@ fn give_answer(state, registry, name, answer) {
   case
     list.filter(state.live_answers, fn(x) {
       case x {
-        #(_, #(_, message.NotAnswered)) -> True
+        #(_, #(_, NotAnswered)) -> True
         _ -> False
       }
     })

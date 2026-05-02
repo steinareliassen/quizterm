@@ -48,8 +48,8 @@ pub fn get_subscription_hander() {
 }
 
 pub fn subscribe(
-  registry: GroupRegistry(NotifyClient),
-  on_msg handle_msg: fn(NotifyClient) -> msg,
+  registry: GroupRegistry(topic),
+  on_msg handle_msg: fn(topic) -> msg,
 ) -> Effect(msg) {
   use _, _ <- server_component.select
   let subject = group_registry.join(registry, "quiz", process.self())

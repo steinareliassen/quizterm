@@ -1,3 +1,4 @@
+import backend/statehandler.{type StateControl}
 import gleam/bytes_tree
 import gleam/erlang/process.{type Selector, type Subject}
 import gleam/http/request.{type Request}
@@ -40,7 +41,7 @@ pub fn serve_game(
     #(
       String,
       String,
-      actor.Started(Subject(message.StateControl)),
+      actor.Started(Subject(StateControl)),
       message.ClientsServer,
     ),
     model,
@@ -49,7 +50,7 @@ pub fn serve_game(
   id: String,
   pin: String,
   roomhandler: actor.Started(Subject(message.RoomControl)),
-  statehandler: actor.Started(Subject(message.StateControl)),
+  statehandler: actor.Started(Subject(StateControl)),
 ) -> Response(ResponseData) {
   let start_args_opt =
     actor.call(roomhandler.data, 1000, message.FetchRoom(id, pin, _))

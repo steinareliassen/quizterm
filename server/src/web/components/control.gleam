@@ -1,5 +1,4 @@
 // IMPORTS ---------------------------------------------------------------------
-import gleam/dynamic/decode
 import gleam/erlang/process.{type Subject}
 import gleam/otp/actor.{type Started}
 import gleam/pair
@@ -8,7 +7,7 @@ import lustre
 import lustre/attribute
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
-import lustre/element/html
+import lustre/element/html.{text}
 import lustre/element/keyed
 import lustre/event
 import lustre/server_component
@@ -89,25 +88,17 @@ fn view(model: Model) -> Element(Msg) {
   html.div([attribute.class("terminal-section")], [
     html.div([attribute.class("participants-grid")], [
       element.fragment([
-        keyed.div([attribute.class("participand-hidden")], [
-          #("reveal", html.text("")),
-        ]),
-        keyed.div([attribute.class("participand-hidden")], [
-          #("reveal", html.text("")),
-        ]),
-        keyed.div([attribute.class("control")], [
-          #("reveal", html.text("")),
-        ]),
+        [text("")] |> html.div([attribute.class("participand-hidden")], _),
+        [text("")] |> html.div([attribute.class("participand-hidden")], _),
+        [text("")] |> html.div([attribute.class("participand-hidden")], _),
         case model.state {
           Quiz -> {
-            keyed.div([attribute.class("control")], [
-              #("reveal", view_button("Reveal answers", AnnounceAnswer)),
-            ])
+            [#("reveal", view_button("Reveal answers", AnnounceAnswer))]
+            |> keyed.div([attribute.class("control")], _)
           }
           Reveal -> {
-            keyed.div([attribute.class("control")], [
-              #("next", view_button("Ask next question", AnnounceQuiz)),
-            ])
+            [#("next", view_button("Ask next question", AnnounceQuiz))]
+            |> keyed.div([attribute.class("control")], _)
           }
         },
       ]),
@@ -115,10 +106,8 @@ fn view(model: Model) -> Element(Msg) {
   ])
 }
 
-fn view_button(text: String, on_submit handle_keydown: msg) -> Element(msg) {
-  let on_keydown = event.on("click", { decode.success(handle_keydown) })
-
-  html.button([attribute.class("controlbutton"), on_keydown], [
+fn view_button(text: String, handler: msg) -> Element(msg) {
+  html.button([attribute.class("controlbutton"), event.on_click(handler)], [
     html.text(text),
   ])
 }
