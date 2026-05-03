@@ -6,6 +6,7 @@ import gleam/erlang/process.{type Subject}
 import gleam/http
 import gleam/int
 import gleam/list
+import gleam/option.{None}
 import gleam/otp/actor.{type Started}
 import gleam/string
 import shared/message.{type RoomControl, type StateControl}
@@ -21,6 +22,7 @@ pub fn handle_request(
   use req <- middleware(req)
   case wisp.path_segments(req) {
     [] | ["index.html"] -> serve.main_html(fetch_rooms(room_handler))
+    ["room", room_key] -> serve.direct_html(fetch_rooms(room_handler), room_key)
     ["api", ..path] ->
       handle_api(sha_api_key, room_handler, state_handler, req, path)
 
@@ -119,7 +121,7 @@ fn add_room(room_handler: Started(Subject(RoomControl)), json) {
     use name <- decode.field("name", decode.string)
     decode.success(message.CreateRoom(
       id:,
-      room: message.RoomInfo(name, pin_enc),
+      room: message.RoomInfo(name:, pin_enc:, room_key: None),
     ))
   }
 

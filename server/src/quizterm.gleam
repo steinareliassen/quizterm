@@ -40,14 +40,15 @@ pub fn main() {
             ["lustre", "runtime.mjs"] -> serve_runtime()
             ["client.js"] -> serve_static("client.js")
             ["static", file] -> serve_static(file)
-            ["socket", "game", id, pin] ->
-              sockethandler.serve_game(req, game.component(), id, pin, room_handler,state_handler)
-            ["socket", "control", id, pin] ->
+            ["socket", "game", id, "key", key] ->
+              sockethandler.serve_game(req, game.component(), id, key, False, room_handler,state_handler)
+            ["socket", "game", id, "pin", pin] ->
+              sockethandler.serve_game(req, game.component(), id, pin, True, room_handler,state_handler)
+            ["socket", "control", id] ->
               sockethandler.serve(
                 req,
                 control.component(),
                 id,
-                pin,
                 room_handler,
               )
             _ ->

@@ -8,16 +8,18 @@ import gleam/otp/actor
 import lustre
 import lustre/server_component
 import mist.{type Connection, type ResponseData}
-import shared/message
+import shared/message.{
+  type ClientsServer, type RoomControl, type StateControl, FetchRoom,
+  FetchRoomChecked,
+}
 
 pub fn serve(
   request: Request(Connection),
-  component: lustre.App(message.ClientsServer, model, msg),
+  component: lustre.App(ClientsServer, model, msg),
   id: String,
-  pin: String,
-  actor: actor.Started(Subject(message.RoomControl)),
+  actor: actor.Started(Subject(RoomControl)),
 ) -> Response(ResponseData) {
-  let start_args = actor.call(actor.data, 1000, message.FetchRoom(id, pin, _))
+  let start_args = actor.call(actor.data, 1000, FetchRoom(id, _))
   case start_args {
     Some(start_args) ->
       mist.websocket(
@@ -37,28 +39,34 @@ pub fn serve(
 pub fn serve_game(
   request: Request(Connection),
   component: lustre.App(
-    #(
-      String,
-      String,
-      actor.Started(Subject(message.StateControl)),
-      message.ClientsServer,
-    ),
+    #(String, String, actor.Started(Subject(StateControl)), ClientsServer),
     model,
     msg,
   ),
   id: String,
-  pin: String,
-  roomhandler: actor.Started(Subject(message.RoomControl)),
-  statehandler: actor.Started(Subject(message.StateControl)),
+  pin_or_key: String,
+  is_pin: Bool,
+  roomhandler: actor.Started(Subject(RoomControl)),
+  statehandler: actor.Started(Subject(StateControl)),
 ) -> Response(ResponseData) {
   let start_args_opt =
-    actor.call(roomhandler.data, 1000, message.FetchRoom(id, pin, _))
+    actor.call(roomhandler.data, 1000, FetchRoomChecked(
+      id,
+      pin_or_key,
+      is_pin,
+      _,
+    ))
 
   case start_args_opt {
     Some(start_args) ->
       mist.websocket(
         request:,
-        on_init: init_socket(_, component, #(id, pin, statehandler, start_args)),
+        on_init: init_socket(_, component, #(
+          id,
+          pin_or_key,
+          statehandler,
+          start_args,
+        )),
         handler: loop_socket,
         on_close: close_socket,
       )

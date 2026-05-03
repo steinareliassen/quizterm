@@ -12,7 +12,9 @@ import lustre/attribute.{class}
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html
-import shared/message.{type ClientsServer, type NotifyClient, type NotifyServer}
+import shared/message.{
+  type ClientsServer, type NotifyClient, type NotifyServer, FetchQuestions,
+}
 import web/components/answerlist
 import web/components/card
 import web/components/shared.{input_cell}
@@ -137,7 +139,6 @@ fn update_pregame(model: Model, msg: Msg) {
                 name,
                 #(model.registry, model.player_handler),
                 model.team_id,
-                model.team_pin,
               )),
               effect.map(
                 card.subscribe(model.registry, card.get_subscription_hander()),
@@ -146,11 +147,7 @@ fn update_pregame(model: Model, msg: Msg) {
             )
             "Single Game" -> {
               let answer_list =
-                actor.call(
-                  model.state_handler.data,
-                  1000,
-                  message.FetchQuestions,
-                )
+                actor.call(model.state_handler.data, 1000, FetchQuestions)
               #(
                 SingleGame(answerlist.init(
                   name,

@@ -30,16 +30,17 @@ pub type StateControl {
 }
 
 pub type Room {
-  Room(name: String, pin_enc: String, actors: ClientsServer)
+  Room(name: String, pin_enc: String, room_key: Option(String), actors: ClientsServer)
 }
 
 pub type RoomInfo {
-  RoomInfo(name: String, pin_enc: String)
+  RoomInfo(name: String, pin_enc: String, room_key: Option(String))
 }
 
 pub type RoomControl {
   CreateRoom(id: String, room: RoomInfo)
-  FetchRoom(id: String, pin: String, subject: Subject(Option(ClientsServer)))
+  FetchRoom(id: String, subject: Subject(Option(ClientsServer)))
+  FetchRoomChecked(id: String, pin_or_key: String, is_pin: Bool,subject: Subject(Option(ClientsServer)))
   FetchRooms(subject: Subject(List(#(String, RoomInfo))))
 }
 
