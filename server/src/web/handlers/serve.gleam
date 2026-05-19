@@ -63,10 +63,8 @@ pub fn direct_html(
             [
               case maybe_room {
                 Ok(#(room, message.RoomInfo(_, _, Some(room_key)))) ->
-                  server_component.route(
-                    "/socket/game/" <> room <> "/key/" <> room_key,
-                  )
-                _ -> server_component.route("/socket/roomconnect/" <> room_key)
+                  route("/socket/game/" <> room <> "/key/" <> room_key)
+                _ -> route("/socket/roomconnect/" <> room_key)
               },
             ],
             [],

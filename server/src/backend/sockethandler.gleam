@@ -39,7 +39,7 @@ pub fn serve(
 pub fn serve_game(
   request: Request(Connection),
   component: lustre.App(
-    #(String, String, actor.Started(Subject(StateControl)), ClientsServer),
+    #(String, actor.Started(Subject(StateControl)), ClientsServer),
     model,
     msg,
   ),
@@ -61,12 +61,7 @@ pub fn serve_game(
     Some(start_args) ->
       mist.websocket(
         request:,
-        on_init: init_socket(_, component, #(
-          id,
-          pin_or_key,
-          statehandler,
-          start_args,
-        )),
+        on_init: init_socket(_, component, #(id, statehandler, start_args)),
         handler: loop_socket,
         on_close: close_socket,
       )

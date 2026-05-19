@@ -20,7 +20,7 @@ import web/components/card
 import web/components/shared.{input_cell}
 
 pub fn component() -> lustre.App(
-  #(String, String, actor.Started(Subject(message.StateControl)), ClientsServer),
+  #(String, actor.Started(Subject(message.StateControl)), ClientsServer),
   Game,
   GameMsg,
 ) {
@@ -36,7 +36,6 @@ pub opaque type Model {
     player_handler: Started(Subject(NotifyServer)),
     state_handler: actor.Started(Subject(message.StateControl)),
     team_id: String,
-    team_pin: String,
   )
 }
 
@@ -70,12 +69,11 @@ type Msg {
 fn init(
   handlers: #(
     String,
-    String,
     actor.Started(Subject(message.StateControl)),
     ClientsServer,
   ),
 ) -> #(Game, Effect(GameMsg)) {
-  let #(team_id, team_pin, state_handler, client_server) = handlers
+  let #(team_id, state_handler, client_server) = handlers
   let #(registry, player_handler) = client_server
   #(
     PreGame(Model(
@@ -86,7 +84,6 @@ fn init(
       player_handler:,
       state_handler:,
       team_id:,
-      team_pin:,
     )),
     effect.none(),
   )
