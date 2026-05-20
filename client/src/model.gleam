@@ -13,7 +13,7 @@ pub type State {
 pub type Msg {
   Initialize
   SelectedRoom(String)
-  KeyPin(String)
+  KeyPin(String, String)
 }
 
 pub type Room {

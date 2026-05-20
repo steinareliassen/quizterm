@@ -1,4 +1,4 @@
-import components.{click_cell, terminal_header,input_cell,Box}
+import components.{Box, click_cell, input_cell, terminal_header}
 import gleam/int
 import gleam/list
 import gleam/option.{None, Some}
@@ -15,12 +15,16 @@ import model.{
 pub fn view(model: Model) -> Element(Msg) {
   case model.state {
     Empty -> view_room_list(model.rooms)
-    EnterPin(_, _) -> view_enter_pin()
+    EnterPin(_, pin) -> view_enter_pin(pin)
     JoinGame(room, pin) -> view_game(room, pin)
   }
 }
 
-fn layout(header: String, ohno: option.Option(String), body: List(Element(Msg))) {
+fn layout(
+  header: String,
+  ohno: option.Option(String),
+  body: List(Element(Msg)),
+) {
   html.div([], [
     terminal_header(
       element.fragment([
@@ -61,12 +65,13 @@ fn view_room_list(items: List(Room)) -> Element(Msg) {
   })
 }
 
-fn view_enter_pin() -> Element(Msg) {
-  layout("Enter PIN code for room", None, [
-    html.div([class("participant-hidden")], []),
-
-    input_cell("[#ENTER PIN]", True, KeyPin, Box),
-    html.div([class("participant-hidden")], []),
+fn view_enter_pin(pin: String) -> Element(Msg) {
+  layout("", None, [
+    [
+      [html.text("[#ENTER PIN]")] |> components.div_styled(components.Answer),
+      components.input_cell_2(pin, KeyPin(pin, _), components.Login),
+    ]
+    |> components.div_styled(components.Box),
   ])
 }
 
@@ -78,4 +83,3 @@ fn view_game(room: String, pin: String) -> Element(Msg) {
     ),
   ])
 }
-

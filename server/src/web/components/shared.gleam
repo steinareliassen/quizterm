@@ -1,3 +1,4 @@
+import components
 import gleam/dynamic/decode
 import lustre/attribute
 import lustre/element.{type Element}
@@ -10,9 +11,9 @@ pub fn input_cell(
   text: String,
   on_submit handle_keydown: fn(String) -> msg,
 ) -> Element(msg) {
-  html.div([attribute.class("singles-grid")], [
+  [
     html.div([], [html.text(text)]),
-    keyed.div([], [
+    keyed.div([attribute.class("participant-login")], [
       #("inputheader", html.text("$>")),
       #(
         "input",
@@ -25,7 +26,8 @@ pub fn input_cell(
         ]),
       ),
     ]),
-  ])
+  ]
+  |> components.div_styled(components.Name)
 }
 
 pub fn key_down(

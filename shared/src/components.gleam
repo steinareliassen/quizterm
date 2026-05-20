@@ -1,3 +1,4 @@
+import gleam/string
 import gleam/option.{type Option, None, Some}
 import lustre/attribute.{class}
 import lustre/element.{type Element}
@@ -32,7 +33,22 @@ pub fn input_cell(
         attribute.autofocus(True),
       ]),
     ]),
-  ] |> div_styled(style)
+  ]
+  |> div_styled(style)
+}
+
+pub fn input_cell_2(pin: String, on_input: fn(String) -> msg, style: Style) -> Element(msg) {
+  [
+    html.div([], [
+      html.input([
+        attribute.type_("tel"),
+        attribute.value(string.repeat("*", times: string.length(pin))),
+        event.on_input(on_input),
+        attribute.autofocus(True),
+      ]),
+    ]),
+  ]
+  |> div_styled(style)
 }
 
 pub fn click_cell(

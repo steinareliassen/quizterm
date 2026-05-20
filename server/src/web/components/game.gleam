@@ -202,9 +202,12 @@ fn view_pregame(model: Model) -> Element(Msg) {
                 PickedPlayer,
               )
             _ ->
-              html.div([attribute.class("participant-box")], [
-                input_cell("Enter player name:", ReceiveName),
-              ])
+              [
+                [html.text("[#ENTER PLAYER NAME]")]
+                  |> components.div_styled(components.Answer),
+                input_cell("", ReceiveName),
+              ]
+              |> components.div_styled(components.Box)
           }
         AskOkPlayer(player) -> {
           [

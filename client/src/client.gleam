@@ -43,21 +43,27 @@ fn init(initial: #(List(Room), Option(String))) -> #(Model, Effect(Msg)) {
 }
 
 fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
+  echo "UPDATE!"
   case msg {
     Initialize -> init(#(model.rooms, None))
     SelectedRoom(room) -> #(
       Model(..model, state: EnterPin(room:, pin: "")),
       effect.none(),
     )
-    KeyPin(pin) -> {
+    KeyPin(pin, starkey) -> {
+      let key = string.replace(in: starkey, each: "*", with: "")
       case model.state {
-        EnterPin(room, _) -> #(
-          Model(..model, state: case string.length(pin) < 4 {
-            False -> model.JoinGame(room:, pin:)
-            True -> EnterPin(room:, pin:)
-          }),
-          effect.none(),
-        )
+        EnterPin(room, _) -> {
+          let pin = pin <> key
+
+          #(
+            Model(..model, state: case string.length(pin) < 4 {
+              False -> model.JoinGame(room:, pin:)
+              True -> EnterPin(room:, pin:)
+            }),
+            effect.none(),
+          )
+        }
         _ ->
           init(#(
             model.rooms,
