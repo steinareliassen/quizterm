@@ -30,19 +30,6 @@ pub fn component() -> lustre.App(
   lustre.application(init, update, view)
 }
 
-pub opaque type PlayerModel {
-  PlayerModel(
-    state: State,
-    players: List(String),
-    player: Option(String),
-    registry: GroupRegistry(NotifyClient),
-    player_handler: Subject(NotifyServer),
-    state_handler: Subject(StateControl),
-    team_id: String,
-    team_pin: String,
-  )
-}
-
 pub type Game {
   SelectRoom(RoomModel)
   SelectPlayer(PlayerModel)
@@ -59,14 +46,6 @@ pub opaque type RoomModel {
   )
 }
 
-type State {
-  PickPlayer
-  PickGametype
-  EnterPlayer
-  AskOkPlayer(name: String)
-  ListAnswers
-}
-
 pub opaque type GameMsg {
   SelectRoomMsg(RoomMsg)
   PreGameMsg(Msg)
@@ -75,6 +54,7 @@ pub opaque type GameMsg {
 }
 
 type Msg {
+  FetchModel(PlayerModel)
   PickedPlayer(Option(String))
   ReceiveName(name: String)
   AcceptPlayer(name: Option(String))
@@ -111,8 +91,10 @@ pub type Room {
 }
 
 fn update(model: Game, msg: GameMsg) {
+  echo "New Message!"
   case model, msg {
     LiveGame(model), LiveGameMsg(msg) -> {
+      echo "Live!"
       #(LiveGame(card.update(model, msg)), effect.none())
     }
     SingleGame(model), SingleGameMsg(msg) -> #(
@@ -120,9 +102,13 @@ fn update(model: Game, msg: GameMsg) {
       effect.none(),
     )
     SelectPlayer(model), PreGameMsg(msg) -> update_pregame(model, msg)
-
+    SelectRoom(_), PreGameMsg(FetchModel(model)) ->
+      update_pregame(model, FetchModel(model))
     SelectRoom(model), SelectRoomMsg(msg) -> update_pickroom(model, msg)
-    _, _ -> #(model, effect.none())
+    _, _ -> {
+      echo "DISCARD!"
+      #(model, effect.none())
+    }
   }
 }
 
@@ -147,19 +133,30 @@ fn update_pickroom(model: RoomModel, msg: RoomMsg) -> #(Game, Effect(GameMsg)) {
     )
     KeyPin(pin, starkey) -> {
       let key = string.replace(in: starkey, each: "*", with: "")
+      let pin = pin <> key
       case model.state {
         EnterPin(room, _) -> {
-          let pin = pin <> key
-
-          #(
-            SelectRoom(
-              RoomModel(..model, state: case string.length(pin) < 4 {
-                False -> JoinGame(room:, pin:)
-                True -> EnterPin(room:, pin:)
-              }),
-            ),
-            effect.none(),
-          )
+          case string.length(pin) >= 4 {
+            True -> {
+              echo "fetching!"
+              #(
+                SelectRoom(RoomModel(..model, state: EnterPin(room:, pin:))),
+                fetch_players(
+                  model.room_handler,
+                  model.state_handler,
+                  room.id,
+                  pin,
+                ),
+              )
+            }
+            False -> {
+              echo "pin " <> pin
+              #(
+                SelectRoom(RoomModel(..model, state: EnterPin(room:, pin:))),
+                effect.none(),
+              )
+            }
+          }
         }
         _ -> #(
           SelectRoom(RoomModel(
@@ -175,8 +172,62 @@ fn update_pickroom(model: RoomModel, msg: RoomMsg) -> #(Game, Effect(GameMsg)) {
   }
 }
 
+fn fetch_players(
+  room_handler: Subject(RoomControl),
+  state_handler: Subject(StateControl),
+  room: String,
+  pin: String,
+) {
+  effect.from(fn(dispatch) {
+    let assert Some(clientsserver) =
+      actor.call(room_handler, 1000, message.FetchRoom(room, pin, _))
+    let #(registry, player_handler) = clientsserver
+    let players = actor.call(player_handler, 1000, message.FetchPlayers)
+    echo "done"
+    dispatch(
+      PreGameMsg(
+        FetchModel(PlayerModel(
+          PickPlayer,
+          players,
+          None,
+          registry,
+          player_handler,
+          state_handler,
+          room,
+          pin,
+        )),
+      ),
+    )
+  })
+}
+
+pub opaque type PlayerModel {
+  PlayerModel(
+    state: State,
+    players: List(String),
+    player: Option(String),
+    registry: GroupRegistry(NotifyClient),
+    player_handler: Subject(NotifyServer),
+    state_handler: Subject(StateControl),
+    team_id: String,
+    team_pin: String,
+  )
+}
+
+type State {
+  PickPlayer
+  PickGametype
+  EnterPlayer
+  AskOkPlayer(name: String)
+  ListAnswers
+}
+
 fn update_pregame(model: PlayerModel, msg: Msg) {
   case msg {
+    FetchModel(model) -> {
+      echo "Pregame"
+      #(SelectPlayer(model), effect.none())
+    }
     PickedPlayer(player) -> #(
       SelectPlayer(case player {
         Some(player) -> PlayerModel(..model, state: AskOkPlayer(player))
@@ -245,14 +296,14 @@ fn update_pregame(model: PlayerModel, msg: Msg) {
 type RoomState {
   Init
   PickRoom
-  EnterPin(room: String, pin: String)
-  JoinGame(room: String, pin: String)
+  EnterPin(room: Room, pin: String)
+  JoinGame(room_id: String, pin: String)
 }
 
 pub type RoomMsg {
   Initialize
   ReceiveRooms(List(Room))
-  SelectedRoom(String)
+  SelectedRoom(Room)
   KeyPin(String, String)
 }
 
@@ -273,7 +324,12 @@ fn view_selectroom(model: RoomModel) -> Element(RoomMsg) {
   case model.state {
     Init -> layout("... please wait", Some("Fetching rooms"), [])
     PickRoom -> view_room_list(model.rooms)
-    EnterPin(_, pin) -> view_enter_pin(pin)
+    EnterPin(room, pin) -> {
+      case string.length(pin) >= 4 {
+        True -> [html.text("Waiting!")] |> div_styled(components.Box)
+        False -> view_enter_pin(room, pin)
+      }
+    }
     JoinGame(_, _) -> element.none()
   }
 }
@@ -285,6 +341,7 @@ fn layout(
 ) {
   html.div([], [
     terminal_header(
+      None,
       element.fragment([
         html.div([], [
           case ohno {
@@ -292,7 +349,6 @@ fn layout(
             Some(x) -> html.h3([], [html.text("Fail: " <> x)])
           },
         ]),
-        html.text("<< Please Log On to use QuizTerm. >>"),
       ]),
     ),
     html.div([attribute.class("terminal-section")], [
@@ -312,7 +368,7 @@ fn view_room_list(items: List(Room)) -> Element(RoomMsg) {
       list.sort(items, room_compare)
       |> list.index_map(fn(item, index) {
         click_cell(
-          item.id,
+          item,
           SelectedRoom,
           Some("[#" <> int.to_string(index) <> "] " <> item.name),
           None,
@@ -323,30 +379,28 @@ fn view_room_list(items: List(Room)) -> Element(RoomMsg) {
   })
 }
 
-fn view_enter_pin(pin: String) -> Element(RoomMsg) {
+fn view_enter_pin(room: Room, pin: String) -> Element(RoomMsg) {
   layout("", None, [
-    [
-      [html.text("[#ENTER PIN]")] |> components.div_styled(components.Answer),
-      components.input_cell_2(pin, KeyPin(pin, _), components.Login),
-    ]
-    |> components.div_styled(components.Box),
+    components.content_cell(
+      "[ # " <> room.name <> " ] ",
+      None,
+      components.Login,
+    ),
+    components.input_cell_2(pin, KeyPin(pin, _), components.Login),
   ])
 }
 
 fn view_selectplayer(model: PlayerModel) -> Element(Msg) {
   element.fragment([
-    case model.state {
-      PickPlayer -> html.text("STATUS: Please select player")
-      EnterPlayer -> html.text("STATUS: Please enter your name")
-      AskOkPlayer(_) -> html.text("STATUS: Validate player")
-      _ -> html.text("STATUS: Waiting for next question")
-    }
-      |> terminal_header,
-    html.div([attribute.class("terminal-section")], [
-      html.div([attribute.class("terminal-label mb-4")], [
-        html.text("[ACTIVE TRANSMISSIONS]"),
-      ]),
-    ]),
+    Some(case model.state {
+      EnterPlayer | PickPlayer if model.players == [] ->
+        "STATUS: Please enter your name"
+      PickPlayer -> "STATUS: Please select player"
+      AskOkPlayer(_) -> "STATUS: Validate player"
+      _ -> "STATUS: Pardon?"
+    })
+      |> terminal_header(element.none()),
+
     html.div([class("participants-grid")], [
       case model.state {
         EnterPlayer | PickPlayer ->
@@ -357,12 +411,19 @@ fn view_selectplayer(model: PlayerModel) -> Element(Msg) {
                 PickedPlayer,
               )
             _ ->
-              [
-                [html.text("[#ENTER PLAYER NAME]")]
-                  |> components.div_styled(components.Answer),
-                input_cell("", ReceiveName),
-              ]
-              |> components.div_styled(components.Box)
+              html.div([], [
+                components.content_cell(
+                  "[ # TEAM NAME GOES HERE! ] ",
+                  None,
+                  components.Login,
+                ),
+                [
+                  [html.text("[#ENTER PLAYER NAME]")]
+                    |> components.div_styled(components.Name),
+                  input_cell("", ReceiveName),
+                ]
+                  |> div_styled(components.Login),
+              ])
           }
         AskOkPlayer(player) -> {
           [

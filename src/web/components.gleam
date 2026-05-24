@@ -1,16 +1,22 @@
-import gleam/string
 import gleam/option.{type Option, None, Some}
+import gleam/string
 import lustre/attribute.{class}
 import lustre/element.{type Element}
 import lustre/element/html.{text}
 import lustre/event
 
-pub fn terminal_header(element: Element(a)) -> Element(a) {
+pub fn terminal_header(
+  text: Option(String),
+  element: Element(a),
+) -> Element(a) {
   html.div([class("terminal-header")], [
     html.div([class("terminal-status")], [
       html.span([class("status-blink")], [html.text("●")]),
-      html.text(" SYSTEM READY"),
-      html.span([class("ml-8")], [element]),
+      html.text(case text {
+        Some(text) -> " " <> text
+        None -> " SYSTEM READY"
+      }),
+      html.div([class("ml-8")], [element]),
     ]),
   ])
 }
@@ -37,15 +43,19 @@ pub fn input_cell(
   |> div_styled(style)
 }
 
-pub fn input_cell_2(pin: String, on_input: fn(String) -> msg, style: Style) -> Element(msg) {
+pub fn input_cell_2(
+  pin: String,
+  on_input: fn(String) -> msg,
+  style: Style,
+) -> Element(msg) {
   [
-    html.div([], [
-      html.input([
-        attribute.type_("tel"),
-        attribute.value(string.repeat("*", times: string.length(pin))),
-        event.on_input(on_input),
-        attribute.autofocus(True),
-      ]),
+    html.div([attribute.class("text-visible")], [html.text("# ENTER PIN")]),
+    html.text("$>"),
+    html.input([
+      attribute.type_("tel"),
+      attribute.value(string.repeat("*", times: string.length(pin))),
+      event.on_input(on_input),
+      attribute.autofocus(True),
     ]),
   ]
   |> div_styled(style)
@@ -57,7 +67,6 @@ pub fn click_cell(
   tag: Option(String),
   value: Option(String),
   value_style: Style,
-  // todo: wrap with value option.
 ) -> Element(msg) {
   [
     tag |> maybe_tag(Name),

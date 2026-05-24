@@ -137,8 +137,9 @@ body {
 
 .box-dashed {
     border: 2px dashed #005500;
-    padding: 1rem;
+    padding: 15px;
     transition: all 0.2s;
+    margin-top: -2px;
 }
 
 .box-dashed:hover {

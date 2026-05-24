@@ -5,13 +5,13 @@ import gleam/dynamic/decode
 import gleam/erlang/process.{type Subject}
 import gleam/http
 import gleam/int
+import gleam/json
 import gleam/list
 import gleam/otp/actor.{type Started}
 import gleam/string
 import shared/message.{type RoomControl, type StateControl}
 import web/pages/main.{main_html}
 import web/pages/notfound.{html_404}
-import web/pages/serve
 import wisp.{type Request, type Response}
 
 pub fn handle_request(
@@ -72,7 +72,15 @@ fn handle_api(
       #(401, "missing api key", "unauthorized")
     }
   }
-  |> serve.create_json_response
+  |> create_json_response
+}
+
+pub fn create_json_response(response: #(Int, String, String)) {
+  let #(code, message, output) = response
+  wisp.log_info("[api][" <> int.to_string(code) <> "][" <> message <> "]")
+  json.object([#("response", json.string(output))])
+  |> json.to_string
+  |> wisp.json_response(200)
 }
 
 fn handle_admin_api(

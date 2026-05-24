@@ -1,17 +1,14 @@
 import gleam/dynamic/decode
-import gleam/erlang/process.{type Subject}
 import gleam/int
 import gleam/list
 import gleam/option.{Some}
 import gleam/otp/actor
-import group_registry.{type GroupRegistry}
 import lustre/attribute.{class}
-import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html
 import lustre/element/keyed
 import lustre/server_component
-import shared/message.{type NotifyClient, type NotifyServer, type User, User}
+import shared/message.{type User, User}
 import web/components.{content_cell, terminal_header}
 import web/components/live/model.{
   type Model, type Msg, Answer, GiveAnswer, Init, Model, SharedMessage, Wait,
@@ -53,7 +50,7 @@ pub fn view_2(model: Model) -> Element(Msg) {
         ])
       _ -> html.text("STATUS: Waiting for next question")
     }
-      |> terminal_header,
+      |> terminal_header(Some(""), _),
     case model.state {
       Init -> {
         actor.send(model.handler, message.GiveName(model.name))
