@@ -2,6 +2,4 @@
 /localbuild.sh
 **/build
 **/dist
-/server/priv/static/client.js
-/server/priv/static/index.html
 /quizterm.env
