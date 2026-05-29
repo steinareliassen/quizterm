@@ -15,11 +15,11 @@ import shared/message.{
   RoomInfo,
 }
 import web/components.{
-  Answer, Box, Name, click_cell, content_cell, div_styled, terminal_header,
+  Box, Name, click_cell, div_styled, input_cell,
+  terminal_header,
 }
 import web/components/live/card
 import web/components/live/model
-import web/components/shared.{input_cell}
 import web/components/single/answerlist
 
 pub fn component() -> lustre.App(
@@ -362,7 +362,7 @@ fn layout(
 
 fn view_room_list(items: List(Room)) -> Element(RoomMsg) {
   let room_compare = fn(a: Room, b: Room) { string.compare(a.name, b.name) }
-  layout("Please Select room to play in", None, case items {
+  layout("Please select room to play in", None, case items {
     [] -> [html.text("No rooms exist, nowhere to play! (ohno!)")]
     _ -> {
       list.sort(items, room_compare)
@@ -382,7 +382,7 @@ fn view_room_list(items: List(Room)) -> Element(RoomMsg) {
 fn view_enter_pin(room: Room, pin: String) -> Element(RoomMsg) {
   layout("", None, [
     components.content_cell(
-      "[ # " <> room.name <> " ] ",
+      "[ # " <> room.name <> " ] ENTER PIN:",
       None,
       components.Login,
     ),
@@ -393,11 +393,12 @@ fn view_enter_pin(room: Room, pin: String) -> Element(RoomMsg) {
 fn view_selectplayer(model: PlayerModel) -> Element(Msg) {
   element.fragment([
     Some(case model.state {
-      EnterPlayer | PickPlayer if model.players == [] ->
-        "STATUS: Please enter your name"
+      EnterPlayer -> "STATUS: Please enter your name"
+      PickPlayer if model.players == [] -> "STATUS: Please enter your name"
       PickPlayer -> "STATUS: Please select player"
       AskOkPlayer(_) -> "STATUS: Validate player"
-      _ -> "STATUS: Pardon?"
+      PickGametype -> "STATUS: Select how to play"
+      ListAnswers -> "STATUS: Answer overview"
     })
       |> terminal_header(element.none()),
 
@@ -413,25 +414,24 @@ fn view_selectplayer(model: PlayerModel) -> Element(Msg) {
             _ ->
               html.div([], [
                 components.content_cell(
-                  "[ # TEAM NAME GOES HERE! ] ",
+                  "[ # TEAM NAME ] ENTER PLAYER NAME:",
                   None,
                   components.Login,
                 ),
-                [
-                  [html.text("[#ENTER PLAYER NAME]")]
-                    |> components.div_styled(components.Name),
-                  input_cell("", ReceiveName),
-                ]
+                [input_cell("", ReceiveName)]
                   |> div_styled(components.Login),
               ])
           }
         AskOkPlayer(player) -> {
-          [
-            content_cell("Join as this player: " <> player, None, Answer),
+          html.div([], [
+            components.content_cell(
+              "[ # TEAM NAME ] Join as this player: " <> player,
+              None,
+              components.Login,
+            ),
             click_cell(Some(player), AcceptPlayer, Some("[# Yes]"), None, Name),
             click_cell(None, AcceptPlayer, Some("[# No]"), None, Name),
-          ]
-          |> div_styled(Box)
+          ])
         }
         PickGametype -> {
           html.div([], [
@@ -484,6 +484,6 @@ fn list_answers(player_handler: Subject(NotifyServer)) {
 }
 
 fn click(number: Int, text: String) -> Element(Msg) {
-  Some("► " <> "[#" <> int.to_string(number) <> "] " <> text)
+  Some("[#" <> int.to_string(number) <> "] " <> text)
   |> click_cell(text, PickedGame, _, None, Box)
 }

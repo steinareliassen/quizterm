@@ -9,11 +9,10 @@ import lustre/element/html
 import lustre/element/keyed
 import lustre/server_component
 import shared/message.{type User, User}
-import web/components.{content_cell, terminal_header}
+import web/components.{content_cell, key_down, terminal_header}
 import web/components/live/model.{
   type Model, type Msg, Answer, GiveAnswer, Init, Model, SharedMessage, Wait,
 }
-import web/components/shared.{key_down}
 
 pub fn update(model: Model, msg: Msg) -> Model {
   let handler = model.handler
@@ -294,7 +293,7 @@ fn terminal_section(
 pub fn view_input(on_submit handle_keydown: fn(String) -> msg) -> Element(msg) {
   // Why keyed? See: https://hexdocs.pm/lustre/lustre/element/keyed.html
   keyed.div([], [
-    #("inputheader", html.text("$>")),
+    #("inputheader", html.text("► ")),
     #(
       "input",
       html.input([

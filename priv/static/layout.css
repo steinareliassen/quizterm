@@ -25,10 +25,9 @@ body {
 /* CRT Glow Effect */
 .terminal-glow {
     position: relative;
-    text-shadow:
-            0 0 5px rgba(0, 255, 0, 0.8),
-            0 0 10px rgba(0, 255, 0, 0.5),
-            0 0 20px rgba(0, 255, 0, 0.3);
+    text-shadow: 0 0 5px rgba(0, 255, 0, 0.8),
+    0 0 10px rgba(0, 255, 0, 0.5),
+    0 0 20px rgba(0, 255, 0, 0.3);
     animation: flicker 0.15s infinite alternate;
 }
 
@@ -142,10 +141,15 @@ body {
     margin-top: -2px;
 }
 
+a {
+    text-decoration: none;
+}
+
 .box-dashed:hover {
     border: 2px dashed #009900;
     background: rgba(0, 255, 0, 0.05);
     box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+    cursor: pointer;
 }
 
 .box-hidden {
@@ -263,20 +267,6 @@ body {
         display: block;
         margin-top: 0.5rem;
     }
-}
-
-.terminal-input-wrap {
-    display: flex;
-    align-items: center;
-    gap: 0.4ch;
-}
-
-.terminal-input-wrap::before {
-    content: "$>";
-    color: #00ff00;
-    font-weight: bold;
-    text-shadow: 0 0 5px rgba(0, 255, 0, 0.8);
-    flex-shrink: 0;
 }
 
 input {

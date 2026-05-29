@@ -1,9 +1,13 @@
+import lustre/component
+import gleam/dynamic/decode
 import gleam/option.{type Option, None, Some}
 import gleam/string
 import lustre/attribute.{class}
 import lustre/element.{type Element}
 import lustre/element/html.{text}
+import lustre/element/keyed
 import lustre/event
+import lustre/server_component
 
 pub fn terminal_header(
   text: Option(String),
@@ -22,25 +26,39 @@ pub fn terminal_header(
 }
 
 pub fn input_cell(
-  header: String,
-  password: Bool,
-  on_input: fn(String) -> msg,
-  style: Style,
+  text: String,
+  on_submit handle_keydown: fn(String) -> msg,
 ) -> Element(msg) {
   [
-    html.p([], [html.text("► " <> header)]),
+    html.div([], [html.text(text)]),
     html.div([], [
+      html.text("► "),
       html.input([
-        attribute.type_(case password {
-          True -> "password"
-          False -> "text"
+        attribute.type_("text"),
+        key_down(fn(a: String) { decode.success(handle_keydown(a)) }, fn() {
+          decode.failure(handle_keydown(""), "")
         }),
-        event.on_input(on_input),
         attribute.autofocus(True),
       ]),
     ]),
   ]
-  |> div_styled(style)
+  |> div_styled(Name)
+}
+
+pub fn key_down(
+  success: fn(String) -> decode.Decoder(msg),
+  fail: fn() -> decode.Decoder(msg),
+) {
+  event.on("keydown", {
+    use key <- decode.field("key", decode.string)
+    use value <- decode.subfield(["target", "value"], decode.string)
+
+    case key {
+      "Enter" if value != "" -> success(value)
+      _ -> fail()
+    }
+  })
+  |> server_component.include(["key", "target.value"])
 }
 
 pub fn input_cell_2(
@@ -49,8 +67,7 @@ pub fn input_cell_2(
   style: Style,
 ) -> Element(msg) {
   [
-    html.div([attribute.class("text-visible")], [html.text("# ENTER PIN")]),
-    html.text("$>"),
+    html.text("► "),
     html.input([
       attribute.type_("tel"),
       attribute.value(string.repeat("*", times: string.length(pin))),
@@ -69,8 +86,10 @@ pub fn click_cell(
   value_style: Style,
 ) -> Element(msg) {
   [
-    tag |> maybe_tag(Name),
-    value |> maybe_text(value_style),
+    html.a([attribute.href("javascript:")], [
+      tag |> maybe_tag(Name),
+      value |> maybe_text(value_style),
+    ]),
   ]
   |> div_styled_click(Login, id, on_click)
 }

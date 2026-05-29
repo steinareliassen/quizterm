@@ -7,8 +7,7 @@ import lustre/attribute.{class}
 import lustre/element.{type Element}
 import lustre/element/html
 import shared/message.{type NotifyServer, FetchPlayerAnswers, GiveSingleAnswer}
-import web/components.{click_cell, content_cell, terminal_header}
-import web/components/shared.{input_cell}
+import web/components.{click_cell, content_cell, input_cell, terminal_header}
 
 pub opaque type Model {
   Model(
@@ -85,13 +84,11 @@ pub fn view(model: Model) -> Element(Msg) {
       GiveAnswer(_, _) -> "STATUS: Give your answer"
       _ -> "STATUS: Waiting for next question"
     })
-      |> terminal_header(element.none()),
+      |> terminal_header(html.text(
+        "[Your answers are saved automatically, when you are done answering, simply close the window]",
+      )),
 
-    html.div([attribute.class("terminal-section")], [
-      html.div([attribute.class("terminal-label mb-4")], [
-        html.text("[ACTIVE TRANSMISSIONS]"),
-      ]),
-    ]),
+    html.div([attribute.class("terminal-section")], []),
     html.div([class("participants-grid")], [
       case model.state {
         PickQuestion -> view_questions(model.answers)
@@ -105,12 +102,13 @@ pub fn view(model: Model) -> Element(Msg) {
 
 fn input_new_answer(question: #(String, String)) {
   let #(question_id, question_text) = question
-  html.div([class("participant-box")], [
-    input_cell(
-      " ► Answer [" <> question_id <> "] " <> question_text,
-      GiveAnswer(question, _),
-    ),
-  ])
+  [
+    input_cell("Answer [" <> question_id <> "] " <> question_text, GiveAnswer(
+      question,
+      _,
+    )),
+  ]
+  |> components.div_styled(components.Disconnect)
 }
 
 fn view_questions(answers: List(#(String, #(String, String)))) {
@@ -132,10 +130,5 @@ fn view_questions(answers: List(#(String, #(String, String)))) {
         )
       }),
     ),
-    html.div([], [
-      html.text(
-        "[Your answers are saved automatically, when you are done answering, simply close the window]",
-      ),
-    ]),
   ])
 }
