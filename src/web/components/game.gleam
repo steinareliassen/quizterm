@@ -15,8 +15,7 @@ import shared/message.{
   RoomInfo,
 }
 import web/components.{
-  Box, Name, click_cell, div_styled, input_cell,
-  terminal_header,
+  Box, Name, click_cell, div_styled, input_cell, terminal_header,
 }
 import web/components/live/card
 import web/components/live/model
@@ -144,7 +143,7 @@ fn update_pickroom(model: RoomModel, msg: RoomMsg) -> #(Game, Effect(GameMsg)) {
                 fetch_players(
                   model.room_handler,
                   model.state_handler,
-                  room.id,
+                  room,
                   pin,
                 ),
               )
@@ -175,12 +174,12 @@ fn update_pickroom(model: RoomModel, msg: RoomMsg) -> #(Game, Effect(GameMsg)) {
 fn fetch_players(
   room_handler: Subject(RoomControl),
   state_handler: Subject(StateControl),
-  room: String,
+  room: Room,
   pin: String,
 ) {
   effect.from(fn(dispatch) {
     let assert Some(clientsserver) =
-      actor.call(room_handler, 1000, message.FetchRoom(room, pin, _))
+      actor.call(room_handler, 1000, message.FetchRoom(room.id, pin, _))
     let #(registry, player_handler) = clientsserver
     let players = actor.call(player_handler, 1000, message.FetchPlayers)
     echo "done"
@@ -209,8 +208,8 @@ pub opaque type PlayerModel {
     registry: GroupRegistry(NotifyClient),
     player_handler: Subject(NotifyServer),
     state_handler: Subject(StateControl),
-    team_id: String,
-    team_pin: String,
+    room: Room,
+    pin: String,
   )
 }
 
@@ -260,8 +259,8 @@ fn update_pregame(model: PlayerModel, msg: Msg) {
               LiveGame(model.init(
                 name,
                 #(model.registry, model.player_handler),
-                model.team_id,
-                model.team_pin,
+                model.room.id,
+                model.pin,
               )),
               effect.map(
                 model.subscribe(model.registry, model.get_subscription_hander()),
@@ -414,7 +413,7 @@ fn view_selectplayer(model: PlayerModel) -> Element(Msg) {
             _ ->
               html.div([], [
                 components.content_cell(
-                  "[ # TEAM NAME ] ENTER PLAYER NAME:",
+                  "[ # " <> model.room.name <> " ] ENTER PLAYER NAME:",
                   None,
                   components.Login,
                 ),
@@ -425,7 +424,7 @@ fn view_selectplayer(model: PlayerModel) -> Element(Msg) {
         AskOkPlayer(player) -> {
           html.div([], [
             components.content_cell(
-              "[ # TEAM NAME ] Join as this player: " <> player,
+              "[ # " <> model.room.name <> " ]  Join as this player: " <> player,
               None,
               components.Login,
             ),
