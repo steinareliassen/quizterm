@@ -102,7 +102,6 @@ pub fn initialize(state_handler: Started(Subject(StateControl))) {
           }
           // Room exists, do nothing.
           Ok(_) -> {
-            echo "Attenpting to create existing room, failing"
             state
           }
         }

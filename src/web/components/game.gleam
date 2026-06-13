@@ -90,10 +90,8 @@ pub type Room {
 }
 
 fn update(model: Game, msg: GameMsg) {
-  echo "New Message!"
   case model, msg {
     LiveGame(model), LiveGameMsg(msg) -> {
-      echo "Live!"
       #(LiveGame(card.update(model, msg)), effect.none())
     }
     SingleGame(model), SingleGameMsg(msg) -> #(
@@ -105,7 +103,6 @@ fn update(model: Game, msg: GameMsg) {
       update_pregame(model, FetchModel(model))
     SelectRoom(model), SelectRoomMsg(msg) -> update_pickroom(model, msg)
     _, _ -> {
-      echo "DISCARD!"
       #(model, effect.none())
     }
   }
@@ -137,7 +134,6 @@ fn update_pickroom(model: RoomModel, msg: RoomMsg) -> #(Game, Effect(GameMsg)) {
         EnterPin(room, _) -> {
           case string.length(pin) >= 4 {
             True -> {
-              echo "fetching!"
               #(
                 SelectRoom(RoomModel(..model, state: EnterPin(room:, pin:))),
                 fetch_players(
@@ -149,7 +145,6 @@ fn update_pickroom(model: RoomModel, msg: RoomMsg) -> #(Game, Effect(GameMsg)) {
               )
             }
             False -> {
-              echo "pin " <> pin
               #(
                 SelectRoom(RoomModel(..model, state: EnterPin(room:, pin:))),
                 effect.none(),
@@ -182,7 +177,6 @@ fn fetch_players(
       actor.call(room_handler, 1000, message.FetchRoom(room.id, pin, _))
     let #(registry, player_handler) = clientsserver
     let players = actor.call(player_handler, 1000, message.FetchPlayers)
-    echo "done"
     dispatch(
       PreGameMsg(
         FetchModel(PlayerModel(
@@ -224,7 +218,6 @@ type State {
 fn update_pregame(model: PlayerModel, msg: Msg) {
   case msg {
     FetchModel(model) -> {
-      echo "Pregame"
       #(SelectPlayer(model), effect.none())
     }
     PickedPlayer(player) -> #(
@@ -240,6 +233,7 @@ fn update_pregame(model: PlayerModel, msg: Msg) {
     )
     AcceptPlayer(Some(player)) -> {
       actor.send(model.player_handler, message.AddPlayer(player))
+      echo "A Player joined room "<> model.room.name
       #(
         SelectPlayer(
           PlayerModel(..model, player: Some(player), state: PickGametype),

@@ -38,7 +38,7 @@ fn handle_server_message(model: Model, notify_client) {
   }
 }
 
-pub fn view_2(model: Model) -> Element(Msg) {
+pub fn view_3(model: Model) -> Element(Msg) {
   let #(question, users) = model.lobby
   element.fragment([
     case model.state {
@@ -161,6 +161,12 @@ pub fn view(model: Model) -> Element(Msg) {
   let #(question, users) = model.lobby
   element.fragment([
     case model.state {
+      Init -> {
+        actor.send(model.handler, message.GiveName(model.name))
+        html.div([attribute.class("terminal-section")], [
+        html.h3([], [html.text("Registered user, waiting in lobby")]),
+        ])
+      }
       Answer -> {
         html.div([attribute.class("terminal-section")], [
           [
@@ -304,17 +310,6 @@ pub fn view_input(on_submit handle_keydown: fn(String) -> msg) -> Element(msg) {
         attribute.autofocus(True),
       ]),
     ),
-  ])
-}
-
-fn step_prompt(text: String, fetch: fn() -> Element(a)) {
-  html.div([attribute.class("prompt-line")], [
-    html.div([attribute.class("prompt-text")], [
-      html.div([], [
-        html.text(text),
-      ]),
-      fetch(),
-    ]),
   ])
 }
 
