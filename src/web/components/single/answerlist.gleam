@@ -1,21 +1,20 @@
-import components.{click_cell, content_cell, terminal_header}
 import gleam/erlang/process.{type Subject}
 import gleam/list
 import gleam/option.{type Option, None, Some}
-import gleam/otp/actor.{type Started}
+import gleam/otp/actor
 import gleam/string
 import lustre/attribute.{class}
 import lustre/element.{type Element}
 import lustre/element/html
-import shared/message
-import web/components/shared.{input_cell}
+import shared/message.{type NotifyServer, FetchPlayerAnswers, GiveSingleAnswer}
+import web/components.{click_cell, content_cell, input_cell, terminal_header}
 
 pub opaque type Model {
   Model(
     player_name: String,
     state: Msg,
     answers: List(#(String, #(String, String))),
-    handler: Started(Subject(message.NotifyServer)),
+    handler: Subject(NotifyServer),
   )
 }
 
@@ -28,10 +27,9 @@ pub opaque type Msg {
 pub fn init(
   name: String,
   answer_list: List(#(String, String)),
-  handler: Started(Subject(message.NotifyServer)),
+  handler: Subject(NotifyServer),
 ) {
-  let previous_answers =
-    actor.call(handler.data, 2000, message.FetchPlayerAnswers(name, _))
+  let previous_answers = actor.call(handler, 2000, FetchPlayerAnswers(name, _))
   // Convert a "question number -> question text" array to
   // "question number" -> #("question text", "users answer" array
   // with blank user answers. Add previous answers into list.
@@ -58,8 +56,8 @@ pub fn update(model: Model, msg: Msg) {
     GiveAnswer(question, answer) -> {
       let #(question, _) = question
       actor.send(
-        model.handler.data,
-        message.GiveSingleAnswer(id: model.player_name, question:, answer:),
+        model.handler,
+        GiveSingleAnswer(id: model.player_name, question:, answer:),
       )
       let new_value = case list.key_find(model.answers, question) {
         Ok(pair) -> {
@@ -81,18 +79,16 @@ pub fn update(model: Model, msg: Msg) {
 
 pub fn view(model: Model) -> Element(Msg) {
   element.fragment([
-    case model.state {
-      PickQuestion -> html.text("STATUS: Pick question to answer")
-      GiveAnswer(_, _) -> html.text("STATUS: Give your answer")
-      _ -> html.text("STATUS: Waiting for next question")
-    }
-      |> terminal_header,
+    Some(case model.state {
+      PickQuestion -> "STATUS: Pick question to answer"
+      GiveAnswer(_, _) -> "STATUS: Give your answer"
+      _ -> "STATUS: Waiting for next question"
+    })
+      |> terminal_header(html.text(
+        "[Your answers are saved automatically, when you are done answering, simply close the window]",
+      )),
 
-    html.div([attribute.class("terminal-section")], [
-      html.div([attribute.class("terminal-label mb-4")], [
-        html.text("[ACTIVE TRANSMISSIONS]"),
-      ]),
-    ]),
+    html.div([attribute.class("terminal-section")], []),
     html.div([class("participants-grid")], [
       case model.state {
         PickQuestion -> view_questions(model.answers)
@@ -106,12 +102,13 @@ pub fn view(model: Model) -> Element(Msg) {
 
 fn input_new_answer(question: #(String, String)) {
   let #(question_id, question_text) = question
-  html.div([class("participant-box")], [
-    input_cell(
-      " ► Answer [" <> question_id <> "] " <> question_text,
-      GiveAnswer(question, _),
-    ),
-  ])
+  [
+    input_cell("Answer [" <> question_id <> "] " <> question_text, GiveAnswer(
+      question,
+      _,
+    )),
+  ]
+  |> components.div_styled(components.Disconnect)
 }
 
 fn view_questions(answers: List(#(String, #(String, String)))) {
@@ -133,11 +130,5 @@ fn view_questions(answers: List(#(String, #(String, String)))) {
         )
       }),
     ),
-    html.div([], [
-      html.text(
-        "[Your answers are saved automatically, when you are done answering, simply close the window]",
-      ),
-    ]),
   ])
 }
-

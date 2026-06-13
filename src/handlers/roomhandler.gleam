@@ -1,4 +1,3 @@
-import backend/playerhandler as player_handler
 import gleam/bit_array
 import gleam/crypto
 import gleam/dynamic/decode
@@ -9,6 +8,7 @@ import gleam/option.{None, Some}
 import gleam/otp/actor.{type Started}
 import gleam/string
 import group_registry
+import handlers/playerhandler as player_handler
 import shared/message.{
   type Room, type RoomControl, type RoomInfo, type StateControl, CreateRoom,
   FetchRoom, FetchRooms, PingTime, Room, RoomInfo,
@@ -102,7 +102,6 @@ pub fn initialize(state_handler: Started(Subject(StateControl))) {
           }
           // Room exists, do nothing.
           Ok(_) -> {
-            echo "Attenpting to create existing room, failing"
             state
           }
         }
@@ -153,5 +152,5 @@ fn create_room(
     group_registry.start(process.new_name("quiz-registry" <> id))
   let assert Ok(actor) = player_handler.initialize(state_handler, registry)
   process.send_after(actor.data, 1000, PingTime(actor.data))
-  Room(pin_enc: pin_enc, name:, actors: #(registry, actor))
+  Room(pin_enc: pin_enc, name:, actors: #(registry, actor.data))
 }

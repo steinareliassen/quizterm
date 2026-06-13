@@ -1,6 +1,3 @@
-import backend/roomhandler
-import backend/sockethandler
-import backend/statehandler
 import envoy
 import gleam/bytes_tree
 import gleam/erlang/application
@@ -12,6 +9,9 @@ import gleam/list
 import gleam/option.{None}
 import gleam/result
 import gleam/string
+import handlers/roomhandler
+import handlers/sockethandler
+import handlers/statehandler
 import mist.{type ResponseData}
 import web/components/control
 import web/components/game
@@ -38,10 +38,14 @@ pub fn main() {
         _ ->
           case request.path_segments(req) {
             ["lustre", "runtime.mjs"] -> serve_runtime()
-            ["client.js"] -> serve_static("client.js")
             ["static", file] -> serve_static(file)
-            ["socket", "game", id, pin] ->
-              sockethandler.serve_game(req, game.component(), id, pin, room_handler,state_handler)
+            ["socket", "game"] ->
+              sockethandler.serve_game(
+                req,
+                game.component(),
+                room_handler.data,
+                state_handler.data,
+              )
             ["socket", "control", id, pin] ->
               sockethandler.serve(
                 req,

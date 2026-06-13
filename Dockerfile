@@ -3,9 +3,9 @@ ARG GLEAM_VERSION=v1.15.0
 FROM ghcr.io/gleam-lang/gleam:${GLEAM_VERSION}-erlang-alpine AS builder
 
 # Add project code
-COPY ./server/priv /quizterm/server/priv
-COPY ./server/src /quizterm/server/src
-COPY ./server/gleam.toml /quizterm/server/
+COPY priv /quizterm/server/priv
+COPY src /quizterm/server/src
+COPY gleam.toml /quizterm/server/
 COPY ./client/src /quizterm/client/src
 COPY ./client/gleam.toml /quizterm/client/
 COPY ./shared/src /quizterm/shared/src

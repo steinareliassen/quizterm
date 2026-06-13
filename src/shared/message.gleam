@@ -1,10 +1,9 @@
 import gleam/erlang/process.{type Subject}
 import gleam/option.{type Option}
-import gleam/otp/actor.{type Started}
 import group_registry.{type GroupRegistry}
 
 pub type ClientsServer =
-  #(GroupRegistry(NotifyClient), Started(Subject(NotifyServer)))
+  #(GroupRegistry(NotifyClient), Subject(NotifyServer))
 
 pub type NotifyServer {
   PingTime(Subject(NotifyServer))

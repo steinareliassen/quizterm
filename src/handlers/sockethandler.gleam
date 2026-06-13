@@ -8,16 +8,16 @@ import gleam/otp/actor
 import lustre
 import lustre/server_component
 import mist.{type Connection, type ResponseData}
-import shared/message
+import shared/message.{type RoomControl,type StateControl,type ClientsServer,FetchRoom}
 
 pub fn serve(
   request: Request(Connection),
-  component: lustre.App(message.ClientsServer, model, msg),
+  component: lustre.App(ClientsServer, model, msg),
   id: String,
   pin: String,
-  actor: actor.Started(Subject(message.RoomControl)),
+  actor: actor.Started(Subject(RoomControl)),
 ) -> Response(ResponseData) {
-  let start_args = actor.call(actor.data, 1000, message.FetchRoom(id, pin, _))
+  let start_args = actor.call(actor.data, 1000, FetchRoom(id, pin, _))
   case start_args {
     Some(start_args) ->
       mist.websocket(
@@ -37,37 +37,19 @@ pub fn serve(
 pub fn serve_game(
   request: Request(Connection),
   component: lustre.App(
-    #(
-      String,
-      String,
-      actor.Started(Subject(message.StateControl)),
-      message.ClientsServer,
-    ),
+    #(Subject(RoomControl), Subject(StateControl)),
     model,
     msg,
   ),
-  id: String,
-  pin: String,
-  roomhandler: actor.Started(Subject(message.RoomControl)),
-  statehandler: actor.Started(Subject(message.StateControl)),
+  roomhandler: Subject(RoomControl),
+  statehandler: Subject(StateControl),
 ) -> Response(ResponseData) {
-  let start_args_opt =
-    actor.call(roomhandler.data, 1000, message.FetchRoom(id, pin, _))
-
-  case start_args_opt {
-    Some(start_args) ->
-      mist.websocket(
-        request:,
-        on_init: init_socket(_, component, #(id, pin, statehandler, start_args)),
-        handler: loop_socket,
-        on_close: close_socket,
-      )
-    None ->
-      response.new(404)
-      |> response.set_body(
-        bytes_tree.from_string("Requested resource not found") |> mist.Bytes,
-      )
-  }
+  mist.websocket(
+    request:,
+    on_init: init_socket(_, component, #(roomhandler, statehandler)),
+    handler: loop_socket,
+    on_close: close_socket,
+  )
 }
 
 type Socket(msg) {

@@ -25,10 +25,9 @@ body {
 /* CRT Glow Effect */
 .terminal-glow {
     position: relative;
-    text-shadow:
-            0 0 5px rgba(0, 255, 0, 0.8),
-            0 0 10px rgba(0, 255, 0, 0.5),
-            0 0 20px rgba(0, 255, 0, 0.3);
+    text-shadow: 0 0 5px rgba(0, 255, 0, 0.8),
+    0 0 10px rgba(0, 255, 0, 0.5),
+    0 0 20px rgba(0, 255, 0, 0.3);
     animation: flicker 0.15s infinite alternate;
 }
 
@@ -106,8 +105,8 @@ body {
     display: inline-block;
 }
 
-/* Participants Grid */
-.participants-grid {
+/* CONTAINERS */
+.container-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: 1rem;
@@ -115,63 +114,72 @@ body {
     margin: 0 auto;
 }
 
-.singles-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(590px, 1fr));
+.container-block {
+    display: block;
+    grid-template-columns: repeat(max(1), minmax(800px, 1fr));
     gap: 1rem;
     max-width: 1200px;
     margin: 0 auto;
 }
 
-.participant-box {
+/* Boxes */
+.box-solid {
     border: 2px solid #00ff00;
     padding: 1rem;
     transition: all 0.2s;
 }
 
-.participant-login {
-    border: 2px dashed #005500;
-    padding: 1rem;
-    transition: all 0.2s;
+.box-solid:hover {
+    background: rgba(0, 255, 0, 0.05);
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
 }
 
-.participant-hidden {
+.box-dashed {
+    border: 2px dashed #005500;
+    padding: 15px;
+    transition: all 0.2s;
+    margin-top: -2px;
+}
+
+a {
+    text-decoration: none;
+}
+
+.box-dashed:hover {
+    border: 2px dashed #009900;
+    background: rgba(0, 255, 0, 0.05);
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+    cursor: pointer;
+}
+
+.box-hidden {
     border: none;
     padding: 1rem;
     color: #000000;
     transition: all 0.2s;
 }
 
-.participant-disconnect {
-    border: 1px dashed #005500;
+.box-disconnect {
+    border: 1px dotted #003300;
     padding: 1rem;
     transition: all 0.2s;
 }
 
-.participant-box:hover {
-    background: rgba(0, 255, 0, 0.05);
-    box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
-}
+/* Text styles */
 
-.participant-login:hover {
-    border: 2px solid #00ff00;
-    background: rgba(0, 255, 0, 0.05);
-    box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
-}
-
-.participant-name {
+.text-visible {
     color: #00ff00;
     font-weight: bold;
     margin-bottom: 0.5rem;
     font-size: 1rem;
 }
 
-.participant-answer {
+.text-part {
     color: #00aa00;
     font-size: 0.875rem;
 }
 
-.dim {
+.text-dim {
     color: #006600;
 }
 
@@ -261,36 +269,7 @@ body {
     }
 }
 
-.terminal-input-wrap {
-    display: flex;
-    align-items: center;
-    gap: 0.4ch;
-}
-
-.terminal-input-wrap::before {
-    content: "$>";
-    color: #00ff00;
-    font-weight: bold;
-    text-shadow: 0 0 5px rgba(0, 255, 0, 0.8);
-    flex-shrink: 0;
-}
-
 input {
-    background: transparent;
-    color: #00ff00;
-    font-family: "Courier New", "Courier", monospace;
-    font-size: inherit;
-    border: none;
-    border-bottom: 2px solid #00aa00;
-    outline: none;
-    caret-color: #00ff00;
-    width: 20ch;
-    padding: 0 0 2px 0;
-    text-shadow: 0 0 5px rgba(0, 255, 0, 0.6);
-}
-
-
-button {
     background: transparent;
     color: #00ff00;
     font-family: "Courier New", "Courier", monospace;
@@ -308,17 +287,26 @@ input:focus {
     border-bottom-color: #00ff00;
     box-shadow: 0 2px 8px rgba(0, 255, 0, 0.3);
 }
+
+button {
+    background: transparent;
+    color: #00ff00;
+    font-family: "Courier New", "Courier", monospace;
+    font-size: inherit;
+    border: none;
+    border-bottom: 2px solid #00aa00;
+    outline: none;
+    caret-color: #00ff00;
+    width: 20ch;
+    padding: 0 0 2px 0;
+    text-shadow: 0 0 5px rgba(0, 255, 0, 0.6);
+}
+
 button:hover {
     border-bottom-color: #00ff00;
     box-shadow: 0 2px 8px rgba(0, 255, 0, 0.3);
 }
 
-
-/*button {
-    background-color: #000000;
-    color: #00ff00;
-    border: 3px solid #73ad21;
-}*/
 
 button:focus {
     border: 3px solid #534d01;

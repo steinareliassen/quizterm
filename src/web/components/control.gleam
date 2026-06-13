@@ -1,7 +1,6 @@
-// IMPORTS ---------------------------------------------------------------------
 import gleam/dynamic/decode
 import gleam/erlang/process.{type Subject}
-import gleam/otp/actor.{type Started}
+import gleam/otp/actor
 import gleam/pair
 import group_registry.{type GroupRegistry}
 import lustre
@@ -29,7 +28,7 @@ pub opaque type Model {
   Model(
     state: State,
     registry: GroupRegistry(NotifyClient),
-    handler: Started(Subject(NotifyServer)),
+    handler: Subject(NotifyServer),
   )
 }
 
@@ -67,15 +66,15 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     case msg {
       PurgePlayers -> {
         // Temp removed button to issue this action.
-        actor.send(handler.data, message.PurgePlayers)
+        actor.send(handler, message.PurgePlayers)
         model
       }
       AnnounceQuiz -> {
-        actor.send(handler.data, AnswerQuiz)
+        actor.send(handler, AnswerQuiz)
         Model(..model, state: Quiz)
       }
       AnnounceAnswer -> {
-        actor.send(handler.data, RevealAnswer)
+        actor.send(handler, RevealAnswer)
         Model(..model, state: Reveal)
       }
       SharedMessage(message.Await) -> Model(..model, state: Reveal)
